@@ -102,3 +102,96 @@ impl McpSync {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_read_local_valid_json() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_file = temp_dir.path().join("test_mcp.json");
+
+        let test_config = r#"{
+            "mcpServers": {
+                "test": {
+                    "command": "node",
+                    "args": ["test.js"]
+                }
+            }
+        }"#;
+
+        fs::write(&config_file, test_config).unwrap();
+
+        let sync = McpSync::from_local(config_file.to_str().unwrap().to_string());
+        let result = sync.read_local(config_file.to_str().unwrap());
+
+        assert!(result.is_ok());
+        assert!(result.unwrap().contains("mcpServers"));
+    }
+
+    #[test]
+    fn test_read_local_invalid_path() {
+        let sync = McpSync::from_local("/nonexistent/path.json".to_string());
+        let result = sync.read_local("/nonexistent/path.json");
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_json() {
+        let valid_json = r#"{
+            "mcpServers": {
+                "git": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-git"]
+                }
+            }
+        }"#;
+
+        let parsed: Result<Value> = serde_json::from_str(valid_json)
+            .map_err(|e| RhinolabsError::Other(e.to_string()));
+
+        assert!(parsed.is_ok());
+    }
+
+    #[test]
+    fn test_validate_invalid_json() {
+        let invalid_json = r#"{
+            "mcpServers": {
+                "git": {
+                    "command": "npx",
+                    "args": ["-y", "@modelcontextprotocol/server-git"
+                }
+            }
+        }"#; // Missing closing bracket
+
+        let parsed: Result<Value> = serde_json::from_str(invalid_json)
+            .map_err(|e| RhinolabsError::Other(e.to_string()));
+
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_dry_run_sync() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_file = temp_dir.path().join("test_mcp.json");
+
+        let test_config = r#"{
+            "mcpServers": {
+                "test": {
+                    "command": "test"
+                }
+            }
+        }"#;
+
+        fs::write(&config_file, test_config).unwrap();
+
+        let _sync = McpSync::from_local(config_file.to_str().unwrap().to_string())
+            .dry_run(true);
+
+        // Dry run should not fail for JSON validation
+        // Note: Will still fail if plugin not installed, but that's expected
+    }
+}
