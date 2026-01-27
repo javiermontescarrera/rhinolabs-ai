@@ -1,652 +1,230 @@
 # Rhinolabs AI
 
-Enterprise-grade configuration and management solution for AI-powered development tools, starting with Claude Code.
+Enterprise-grade plugin and configuration management system for Claude Code.
 
 ## Overview
 
-This repository provides:
-- **Rhinolabs Claude Plugin**: 14 curated skills for consistent coding standards and best practices
-- **CLI**: Rust-powered command-line tool for plugin management
-- **GUI**: Desktop application (Tauri) for visual plugin management
-- **Centralized MCP Configuration**: Integration with mcp-toolkit for unified MCP server management
+Rhinolabs AI provides a complete solution for standardizing Claude Code across development teams:
 
-## Quick Start
-
-### Install CLI
-
-```bash
-# Download latest release for your OS from:
-# https://github.com/rhinolabs/rhinolabs-ai/releases
-
-# macOS/Linux
-curl -L https://github.com/rhinolabs/rhinolabs-ai/releases/latest/download/rhinolabs-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m) -o rhinolabs
-chmod +x rhinolabs
-sudo mv rhinolabs /usr/local/bin/
-
-# Or use the interactive installer
-./rhinolabs
-```
-
-### Install Plugin
-
-```bash
-rhinolabs install
-```
-
-That's it! Restart Claude Code and you're ready to go.
+- **Plugin**: Curated skills for consistent coding standards
+- **CLI**: Command-line tool for profile installation and team sync
+- **GUI**: Desktop application for plugin management (lead developers)
+- **Profiles**: Organize skills into reusable bundles (user-level and project-level)
+- **Deploy/Sync**: Distribute configurations across your team via GitHub releases
 
 ## Architecture
 
-```mermaid
-graph TB
-    subgraph "Rhinolabs AI Repository"
-        A[rhinolabs-ai] --> B[rhinolabs-claude]
-        A --> C[rhinolabs-opencode<br/>Future]
-        A --> D[.github/workflows]
-    end
-
-    subgraph "Claude Code Plugin"
-        B --> E[.claude-plugin/plugin.json]
-        B --> F[.mcp.json]
-        B --> G[skills/]
-        B --> H[scripts/]
-    end
-
-    subgraph "Skills"
-        G --> I[rhinolabs-standards]
-        G --> J[rhinolabs-architecture]
-        G --> K[rhinolabs-security]
-        G --> L[react-patterns]
-        G --> M[typescript-best-practices]
-        G --> N[testing-strategies]
-        G --> O[ai-sdk-core]
-        G --> P[ai-sdk-react]
-        G --> Q[nextjs-integration]
-    end
-
-    style A fill:#e1f5fe
-    style B fill:#c8e6c9
-    style G fill:#fff3e0
+```
+rhinolabs-ai/
+├── cli/                    # Command-line interface (rhinolabs-ai, rlai)
+├── core/                   # Shared Rust library
+├── gui/                    # Desktop application (Tauri + React)
+├── rhinolabs-claude/       # Base plugin with skills
+└── docs/                   # Documentation
 ```
 
-## Installation Flow
+### How It Works
 
-```mermaid
-flowchart LR
-    A[Clone Repository] --> B{Select OS}
-    B -->|macOS/Linux| C[Run install.sh]
-    B -->|Windows| D[Run install.ps1]
-    C --> E[Plugin Copied to<br/>User Directory]
-    D --> E
-    E --> F[Restart Claude Code]
-    F --> G[Skills Available]
-
-    style A fill:#e3f2fd
-    style G fill:#c8e6c9
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           LEAD DEVELOPER (GUI)                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  1. Create Profiles    2. Assign Skills    3. Deploy to GitHub      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+                        ┌───────────────────────┐
+                        │   GitHub Release      │
+                        │   rhinolabs-config.zip│
+                        └───────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           TEAM DEVELOPERS (CLI)                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  rhinolabs-ai sync              # Auto-runs on first command        │   │
+│  │  rhinolabs-ai profile install X # Install profile to project        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+## Quick Start
 
-## Getting Started
+### For Team Developers
+
+```bash
+# 1. Install CLI via Homebrew
+brew tap rhinolabs/tap
+brew install rhinolabs-ai
+
+# 2. Run any command (auto-syncs configuration on first run)
+rhinolabs-ai profile list
+
+# 3. Install Main-Profile (user-level, applies to all projects)
+# (Prompted automatically on first sync)
+
+# 4. Install project-specific profile
+cd ~/your-project
+rhinolabs-ai profile install react-stack
+```
+
+### For Lead Developers
+
+1. Download and install the GUI from [Releases](https://github.com/rhinolabs/rhinolabs-ai/releases)
+2. Configure GitHub repository in Project Settings
+3. Create profiles and assign skills
+4. Deploy configuration for your team
+
+## CLI Commands
+
+```bash
+# Aliases: rhinolabs-ai or rlai
+
+# Configuration sync (auto-runs on first command of terminal session)
+rhinolabs-ai sync                    # Manual sync from GitHub
+
+# Profile management
+rhinolabs-ai profile list            # List all profiles
+rhinolabs-ai profile show <id>       # Show profile details
+rhinolabs-ai profile install <name>  # Install profile (current directory)
+rhinolabs-ai profile install <name> -P /path  # Install to specific path
+rhinolabs-ai profile update          # Update installed profile
+rhinolabs-ai profile uninstall       # Remove profile from current directory
+
+# Plugin management
+rhinolabs-ai install                 # Install base plugin
+rhinolabs-ai update                  # Update plugin
+rhinolabs-ai uninstall               # Remove plugin
+rhinolabs-ai status                  # Show installation status
+rhinolabs-ai doctor                  # Run diagnostics
+
+# MCP configuration
+rhinolabs-ai sync-mcp                # Sync MCP servers from source
+```
+
+## Profiles System
+
+Profiles organize skills into reusable bundles:
+
+### User Profile (Main-Profile)
+
+- Installs to `~/.claude/`
+- Applies to **ALL** projects
+- Contains agency-wide standards
+- Auto-installed on first sync (with confirmation)
+
+### Project Profiles
+
+- Installs to `<project>/.claude-plugin/`
+- Applies only to that project
+- Tech-stack specific skills (React, Django, etc.)
+- Installed as Claude Code plugins
+
+### Example: Monorepo Setup
+
+```bash
+cd ~/monorepo
+
+# Install different profiles for each subproject
+rhinolabs-ai profile install react-stack -P ./apps/web
+rhinolabs-ai profile install rust-backend -P ./apps/api
+rhinolabs-ai profile install ts-lib -P ./packages/shared
+
+# Claude Code automatically combines:
+# - Main-Profile (user-level) + Project Profile (per directory)
+```
+
+## Installation Paths
+
+| Component | Path |
+|-----------|------|
+| CLI Config | `~/.config/rhinolabs-ai/` |
+| User Skills | `~/.claude/skills/` |
+| Project Skills | `<project>/.claude/skills/` |
+| Plugin (macOS) | `~/Library/Application Support/Claude Code/plugins/rhinolabs-claude/` |
+| Plugin (Linux) | `~/.config/claude-code/plugins/rhinolabs-claude/` |
+| Plugin (Windows) | `%APPDATA%\Claude Code\plugins\rhinolabs-claude\` |
+
+## Deploy & Sync (Team Distribution)
+
+### Deploy (Lead Developer - GUI Only)
+
+1. Open GUI
+2. Configure GitHub repository (Settings > Project)
+3. Create/modify profiles and assign skills
+4. Click **Deploy** to publish configuration
+
+**Requirements:**
+- `GITHUB_TOKEN` environment variable with repo write access
+- Configured GitHub repository
+
+### Sync (Team Developers - CLI)
+
+```bash
+# Auto-sync on first command of terminal session
+rhinolabs-ai profile list  # Triggers auto-sync
+
+# Or manual sync
+rhinolabs-ai sync
+```
+
+**Note:** Team developers do NOT need `GITHUB_TOKEN` (read-only operations).
+
+## Development
 
 ### Prerequisites
 
-Before installing the Rhinolabs Claude plugin, ensure you have:
+- Rust 1.70+
+- Node.js 18+
+- pnpm (for GUI)
 
-| Requirement | Description |
-|-------------|-------------|
-| Claude Code | Installed and configured on your system |
-| Git | For cloning the repository |
-| Terminal | Bash (macOS/Linux) or PowerShell (Windows) |
-
-### Step-by-Step Installation
-
----
-
-## macOS Installation
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant T as Terminal
-    participant G as Git
-    participant S as install.sh
-    participant C as Claude Code
-
-    U->>T: Open Terminal
-    T->>G: git clone rhinolabs-ai
-    G-->>T: Repository cloned
-    T->>S: ./install.sh
-    S->>S: Detect macOS
-    S->>S: Check Claude Code installation
-    S->>S: Copy plugin to ~/Library/Application Support/Claude Code/plugins/
-    S-->>T: Installation complete
-    U->>C: Restart Claude Code
-    C-->>U: Skills loaded
-```
-
-### Steps
-
-**1. Open Terminal**
-
-Press `Cmd + Space`, type "Terminal", and press Enter.
-
-**2. Clone the repository**
+### Building
 
 ```bash
-git clone https://github.com/rhinolabs/rhinolabs-ai.git
+# CLI
+cd cli && cargo build --release
+
+# GUI
+cd gui && pnpm install && pnpm tauri build
+
+# Core library
+cd core && cargo build
 ```
-
-**3. Navigate to scripts directory**
-
-```bash
-cd rhinolabs-ai/rhinolabs-claude/scripts
-```
-
-**4. Make the script executable**
-
-```bash
-chmod +x install.sh
-```
-
-**5. Run the installer**
-
-```bash
-./install.sh
-```
-
-**6. Verify installation**
-
-The script will display:
-```
-✅ Installation successful!
-Plugin installed at: ~/Library/Application Support/Claude Code/plugins/rhinolabs-claude
-```
-
-**7. Restart Claude Code**
-
-Close and reopen Claude Code to load the new skills.
-
-**8. Verify skills are loaded**
-
-In Claude Code, the skills will be automatically available based on context.
-
----
-
-## Linux Installation (Ubuntu/Arch)
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant T as Terminal
-    participant G as Git
-    participant S as install.sh
-    participant C as Claude Code
-
-    U->>T: Open Terminal
-    T->>G: git clone rhinolabs-ai
-    G-->>T: Repository cloned
-    T->>S: ./install.sh
-    S->>S: Detect Linux distro
-    S->>S: Check Claude Code installation
-    S->>S: Copy plugin to ~/.config/claude-code/plugins/
-    S-->>T: Installation complete
-    U->>C: Restart Claude Code
-    C-->>U: Skills loaded
-```
-
-### Steps
-
-**1. Open Terminal**
-
-- Ubuntu: Press `Ctrl + Alt + T`
-- Arch: Use your preferred terminal emulator
-
-**2. Clone the repository**
-
-```bash
-git clone https://github.com/rhinolabs/rhinolabs-ai.git
-```
-
-**3. Navigate to scripts directory**
-
-```bash
-cd rhinolabs-ai/rhinolabs-claude/scripts
-```
-
-**4. Make the script executable**
-
-```bash
-chmod +x install.sh
-```
-
-**5. Run the installer**
-
-```bash
-./install.sh
-```
-
-**6. Verify installation**
-
-The script will display:
-```
-✅ Installation successful!
-Plugin installed at: ~/.config/claude-code/plugins/rhinolabs-claude
-```
-
-**7. Restart Claude Code**
-
-```bash
-# If running in terminal, exit and restart
-claude
-```
-
-**8. Verify skills are loaded**
-
-In Claude Code, the skills will be automatically available based on context.
-
----
-
-## Windows Installation
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant P as PowerShell
-    participant G as Git
-    participant S as install.ps1
-    participant C as Claude Code
-
-    U->>P: Open PowerShell
-    P->>G: git clone rhinolabs-ai
-    G-->>P: Repository cloned
-    P->>S: .\install.ps1
-    S->>S: Detect Windows
-    S->>S: Check Claude Code installation
-    S->>S: Copy plugin to %APPDATA%\Claude Code\plugins\
-    S-->>P: Installation complete
-    U->>C: Restart Claude Code
-    C-->>U: Skills loaded
-```
-
-### Steps
-
-**1. Open PowerShell**
-
-Press `Win + X` and select "Windows PowerShell" or "Terminal".
-
-**2. Clone the repository**
-
-```powershell
-git clone https://github.com/rhinolabs/rhinolabs-ai.git
-```
-
-**3. Navigate to scripts directory**
-
-```powershell
-cd rhinolabs-ai\rhinolabs-claude\scripts
-```
-
-**4. Run the installer**
-
-```powershell
-.\install.ps1
-```
-
-> **Note**: If you get an execution policy error, run:
-> ```powershell
-> Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-> ```
-
-**5. Verify installation**
-
-The script will display:
-```
-✅ Installation successful!
-Plugin installed at: C:\Users\<username>\AppData\Roaming\Claude Code\plugins\rhinolabs-claude
-```
-
-**6. Restart Claude Code**
-
-Close and reopen Claude Code to load the new skills.
-
-**7. Verify skills are loaded**
-
-In Claude Code, the skills will be automatically available based on context.
-
----
-
-## Plugin Structure
-
-```mermaid
-graph TD
-    subgraph "rhinolabs-claude plugin"
-        A[.claude-plugin/] --> B[plugin.json]
-        C[.mcp.json]
-        D[scripts/] --> E[install.sh]
-        D --> F[install.ps1]
-
-        subgraph "skills/"
-            G[Corporate Standards]
-            H[Frontend Dev]
-            I[Testing]
-            J[Vercel AI SDK]
-            K[Utilities]
-        end
-
-        G --> G1[rhinolabs-standards]
-        G --> G2[rhinolabs-architecture]
-        G --> G3[rhinolabs-security]
-
-        H --> H1[react-patterns]
-        H --> H2[typescript-best-practices]
-        H --> H3[tailwind-4]
-        H --> H4[zod-4]
-        H --> H5[zustand-5]
-
-        I --> I1[testing-strategies]
-        I --> I2[playwright]
-
-        J --> J1[ai-sdk-core]
-        J --> J2[ai-sdk-react]
-        J --> J3[nextjs-integration]
-
-        K --> K1[skill-creator]
-    end
-
-    style A fill:#ffecb3
-    style G fill:#e8f5e9
-    style H fill:#e3f2fd
-    style I fill:#fff3e0
-    style J fill:#f3e5f5
-    style K fill:#fce4ec
-```
-
-```
-rhinolabs-claude/
-├── .claude-plugin/
-│   └── plugin.json              # Plugin metadata
-├── .mcp.json                    # MCP server configuration
-├── scripts/
-│   ├── install.sh               # macOS/Linux installer
-│   └── install.ps1              # Windows installer
-└── skills/
-    ├── rhinolabs-standards/     # Corporate development standards
-    ├── rhinolabs-architecture/  # Architecture patterns
-    ├── rhinolabs-security/      # Security requirements
-    ├── react-patterns/          # React best practices
-    ├── typescript-best-practices/ # TypeScript guidelines
-    ├── tailwind-4/              # Tailwind CSS v4
-    ├── zod-4/                   # Zod validation
-    ├── zustand-5/               # Zustand state management
-    ├── testing-strategies/      # Testing approaches
-    ├── playwright/              # Playwright E2E testing
-    ├── ai-sdk-core/             # Vercel AI SDK core (auto-synced)
-    ├── ai-sdk-react/            # Vercel AI SDK React (auto-synced)
-    ├── nextjs-integration/      # Next.js AI patterns (auto-synced)
-    └── skill-creator/           # Skill creation utility
-        ├── SKILL.md
-        └── assets/
-            └── SKILL-TEMPLATE.md
-```
-
----
-
-## Available Skills
-
-### Corporate Standards
-
-| Skill | Description | Use Case |
-|-------|-------------|----------|
-| `rhinolabs-standards` | Corporate development standards | Code quality, testing, documentation |
-| `rhinolabs-architecture` | Architecture patterns | System design, project structure |
-| `rhinolabs-security` | Security requirements | Auth, encryption, compliance |
-
-### Frontend Development
-
-| Skill | Description | Use Case |
-|-------|-------------|----------|
-| `react-patterns` | React best practices | Components, hooks, state management |
-| `typescript-best-practices` | TypeScript guidelines | Types, generics, type guards |
-| `tailwind-4` | Tailwind CSS v4 patterns | Utility-first styling, responsive design |
-| `zod-4` | Zod v4 validation | Schema validation, type inference |
-| `zustand-5` | Zustand v5 state management | Global state, stores, actions |
 
 ### Testing
 
-| Skill | Description | Use Case |
-|-------|-------------|----------|
-| `testing-strategies` | Testing approaches | Unit, integration, E2E tests |
-| `playwright` | Playwright E2E testing | Browser automation, E2E tests |
-
-### Vercel AI SDK (Auto-synced)
-
-| Skill | Description | Use Case |
-|-------|-------------|----------|
-| `ai-sdk-core` | Vercel AI SDK core | generateText, streamText |
-| `ai-sdk-react` | Vercel AI SDK React | useChat, useCompletion hooks |
-| `nextjs-integration` | Next.js AI patterns | Server actions, route handlers |
-
-### Utilities
-
-| Skill | Description | Use Case |
-|-------|-------------|----------|
-| `skill-creator` | Create new skills | Skill templates, best practices |
-
----
-
-## How Skills Work
-
-```mermaid
-flowchart TB
-    subgraph "Startup"
-        A[Claude Code Starts] --> B[Load Plugin]
-        B --> C[Read SKILL.md Frontmatter]
-        C --> D[Index Skills by Description]
-    end
-
-    subgraph "Runtime"
-        E[User Request] --> F{Match Skill?}
-        F -->|Yes| G[Load SKILL.md Content]
-        G --> H[Apply Instructions]
-        H --> I[Generate Response]
-        F -->|No| J[Standard Response]
-    end
-
-    D --> E
-
-    style A fill:#e3f2fd
-    style I fill:#c8e6c9
-    style J fill:#fff3e0
-```
-
-Skills are automatically triggered based on context. Each skill has:
-
-1. **Frontmatter** (YAML): Name and description for indexing
-2. **Body** (Markdown): Instructions Claude follows when activated
-
-Example skill structure:
-```yaml
----
-name: react-patterns
-description: Use when writing React components, hooks, or discussing React architecture.
----
-
-# React Patterns and Best Practices
-
-## Component Composition
-...
-```
-
----
-
-## Installation Paths by OS
-
-| OS | Plugin Installation Path |
-|----|--------------------------|
-| macOS | `~/Library/Application Support/Claude Code/plugins/rhinolabs-claude/` |
-| Linux | `~/.config/claude-code/plugins/rhinolabs-claude/` |
-| Windows | `%APPDATA%\Claude Code\plugins\rhinolabs-claude\` |
-
----
-
-## Updating the Plugin
-
-```mermaid
-flowchart LR
-    A[git pull] --> B[Run install script]
-    B --> C[Plugin updated]
-    C --> D[Restart Claude Code]
-
-    style A fill:#e3f2fd
-    style D fill:#c8e6c9
-```
-
-### macOS/Linux
-
 ```bash
-cd rhinolabs-ai
-git pull origin main
-cd rhinolabs-claude/scripts
-./install.sh
+# Unit tests
+cargo test --workspace
+
+# GUI E2E tests
+cd gui/tests && pnpm test
 ```
 
-### Windows
+## Project Structure
 
-```powershell
-cd rhinolabs-ai
-git pull origin main
-cd rhinolabs-claude\scripts
-.\install.ps1
-```
-
----
-
-## Automatic Vercel AI SDK Sync
-
-```mermaid
-flowchart TB
-    subgraph "GitHub Actions"
-        A[Weekly Trigger<br/>Monday 00:00 UTC] --> B[Clone vercel/ai]
-        B --> C[Extract Docs]
-        C --> D[Transform to SKILL.md]
-        D --> E[Create PR]
-    end
-
-    subgraph "Vercel AI SDK Source"
-        F[content/docs/03-ai-sdk-core/] --> C
-        G[content/docs/04-ai-sdk-ui/] --> C
-        H[content/docs/05-ai-sdk-rsc/] --> C
-    end
-
-    subgraph "Updated Skills"
-        E --> I[ai-sdk-core]
-        E --> J[ai-sdk-react]
-        E --> K[nextjs-integration]
-    end
-
-    style A fill:#e3f2fd
-    style E fill:#fff3e0
-    style I fill:#c8e6c9
-    style J fill:#c8e6c9
-    style K fill:#c8e6c9
-```
-
-The Vercel AI SDK skills are automatically synchronized from the [official Vercel AI repository](https://github.com/vercel/ai).
-
-### How it works
-
-1. **Schedule**: Every Monday at 00:00 UTC (or manual trigger)
-2. **Source**: Clones `vercel/ai` repository
-3. **Extraction**: Pulls docs from `content/docs/` folders
-4. **Transformation**: Converts MDX to SKILL.md with proper frontmatter
-5. **Review**: Creates a Pull Request for team review
-
-### Synced Skills
-
-| Skill | Source | Content |
-|-------|--------|---------|
-| `ai-sdk-core` | `03-ai-sdk-core/` | generateText, streamText, core patterns |
-| `ai-sdk-react` | `04-ai-sdk-ui/` | useChat, useCompletion hooks |
-| `nextjs-integration` | `05-ai-sdk-rsc/` | RSC, Server Actions, streaming |
-
-### Manual Sync
-
-To trigger a manual sync:
-
-1. Go to **Actions** tab in GitHub
-2. Select **Sync Vercel AI SDK Skills**
-3. Click **Run workflow**
-
----
-
-## Troubleshooting
-
-### Plugin not loading
-
-1. Verify installation path exists
-2. Check `.claude-plugin/plugin.json` exists in the plugin directory
-3. Restart Claude Code completely
-
-### Permission denied (macOS/Linux)
-
-```bash
-chmod +x install.sh
-```
-
-### Execution policy error (Windows)
-
-```powershell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-```
-
-### Skills not triggering
-
-- Skills activate based on context (keywords in your request)
-- Try being more specific: "Using React patterns, create a component..."
-
----
-
-## Uninstalling
-
-### macOS
-
-```bash
-rm -rf ~/Library/Application\ Support/Claude\ Code/plugins/rhinolabs-claude
-```
-
-### Linux
-
-```bash
-rm -rf ~/.config/claude-code/plugins/rhinolabs-claude
-```
-
-### Windows
-
-```powershell
-Remove-Item -Recurse -Force "$env:APPDATA\Claude Code\plugins\rhinolabs-claude"
-```
-
----
+| Directory | Description |
+|-----------|-------------|
+| `cli/` | Rust CLI (rhinolabs-ai, rlai) |
+| `core/` | Shared Rust library |
+| `gui/` | Tauri desktop app |
+| `rhinolabs-claude/` | Base plugin with skills |
+| `docs/` | Documentation |
 
 ## Documentation
 
-- [Installation Guide](docs/INSTALLATION.md)
-- [Skill Management Guidelines](docs/SKILL_GUIDELINES.md) - How skills work and conflict resolution
-- [Security Policy](docs/SECURITY_POLICY.md) - Organizational security policies, incident response, compliance
-- [MCP Integration](docs/MCP_INTEGRATION.md) - Technical MCP details
-- [MCP Centralized Config](docs/MCP_CENTRALIZED_CONFIG.md) - Using mcp-toolkit as source of truth
-- [Multi-OS Support](docs/MULTI_OS_SUPPORT.md)
-
----
+- [Architecture](ARCHITECTURE.md) - System design and data flow
+- [CLI Guide](cli/README.md) - Detailed CLI documentation
+- [GUI Guide](gui/README.md) - Desktop app documentation
+- [Plugin Structure](rhinolabs-claude/README.md) - Skills and plugin details
+- [Skill Guidelines](docs/SKILL_GUIDELINES.md) - Creating custom skills
+- [MCP Integration](docs/MCP_INTEGRATION.md) - MCP server configuration
 
 ## Support
 
-For issues or questions:
-- Internal: Contact the DevOps team
-- Documentation: Check the `docs/` directory
-
----
+- Issues: [GitHub Issues](https://github.com/rhinolabs/rhinolabs-ai/issues)
+- Internal: Contact DevOps team
 
 ## License
 
@@ -654,5 +232,5 @@ Proprietary - Rhinolabs Internal Use Only
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-23
+**Version**: 2.1.0
+**Last Updated**: 2026-01-28

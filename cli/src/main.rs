@@ -97,8 +97,8 @@ enum ProfileAction {
 
     /// Update an installed profile with latest skill versions
     Update {
-        /// Profile ID to update
-        profile: String,
+        /// Profile ID (optional - detects from installed plugin if not specified)
+        profile: Option<String>,
 
         /// Target project path (defaults to current directory)
         #[arg(short = 'P', long)]
@@ -167,7 +167,7 @@ async fn main() -> anyhow::Result<()> {
                     profile::install(&profile, path)?;
                 }
                 ProfileAction::Update { profile, path } => {
-                    profile::update(&profile, path)?;
+                    profile::update(profile, path)?;
                 }
                 ProfileAction::Uninstall { path } => {
                     profile::uninstall(path)?;

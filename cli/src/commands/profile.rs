@@ -2,8 +2,26 @@ use crate::ui::Ui;
 use anyhow::Result;
 use colored::Colorize;
 use rhinolabs_core::{Profiles, ProfileType};
+use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
+
+/// Detect installed profile from .claude-plugin/plugin.json
+fn detect_installed_profile(path: &Path) -> Option<(String, String)> {
+    let plugin_json = path.join(".claude-plugin").join("plugin.json");
+    if !plugin_json.exists() {
+        return None;
+    }
+
+    let content = fs::read_to_string(&plugin_json).ok()?;
+    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+
+    // Read profile info from the manifest
+    let profile_id = json["profile"]["id"].as_str()?.to_string();
+    let profile_name = json["profile"]["name"].as_str()?.to_string();
+
+    Some((profile_id, profile_name))
+}
 
 /// Prompt user for yes/no confirmation
 fn prompt_yes_no(prompt: &str, default_yes: bool) -> bool {
@@ -207,42 +225,51 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
 }
 
 /// Update installed profile (re-install with latest skill versions)
-pub fn update(profile_id: &str, target_path: Option<String>) -> Result<()> {
+pub fn update(profile_id: Option<String>, target_path: Option<String>) -> Result<()> {
     Ui::header("Updating Profile");
 
-    let profile = Profiles::get(profile_id)?;
+    // Determine target path (default to current directory)
+    let target = target_path
+        .map(|p| std::path::PathBuf::from(p))
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
+
+    // If no profile specified, detect from installed plugin
+    let effective_profile_id = match profile_id {
+        Some(id) => id,
+        None => {
+            match detect_installed_profile(&target) {
+                Some((id, name)) => {
+                    Ui::step(&format!("Detected installed profile: {}", name));
+                    id
+                }
+                None => {
+                    Ui::error("No profile installed in this directory.");
+                    Ui::info("Use 'rhinolabs-ai profile install <profile>' to install one first.");
+                    return Ok(());
+                }
+            }
+        }
+    };
+
+    let profile = Profiles::get(&effective_profile_id)?;
 
     match profile {
         Some(profile) => {
-            Ui::step(&format!("Profile: {} ({})", profile.name, profile.id));
+            let path_display = target.display().to_string();
+            println!();
+            println!("  {} Profile '{}' will be updated in:", "→".cyan(), profile.name);
+            println!("    {}", path_display.bold());
+            println!();
 
-            // For Project profiles: use current directory if no path specified
-            let effective_path = if profile.profile_type == ProfileType::Project {
-                let path = target_path
-                    .map(|p| std::path::PathBuf::from(p))
-                    .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
-
-                let path_display = path.display().to_string();
-                println!();
-                println!("  {} Profile '{}' will be updated in:", "→".cyan(), profile.name);
-                println!("    {}", path_display.bold());
-                println!();
-
-                if !prompt_yes_no("Continue?", true) {
-                    Ui::info("Update cancelled.");
-                    return Ok(());
-                }
-                println!();
-
-                Some(path)
-            } else {
-                None
-            };
+            if !prompt_yes_no("Continue?", true) {
+                Ui::info("Update cancelled.");
+                return Ok(());
+            }
+            println!();
 
             Ui::step("Updating skills to latest versions...");
 
-            let path = effective_path.as_deref();
-            let result = Profiles::update_installed(profile_id, path)?;
+            let result = Profiles::update_installed(&effective_profile_id, Some(&target))?;
 
             println!();
             Ui::success("Profile updated!");
@@ -255,7 +282,8 @@ pub fn update(profile_id: &str, target_path: Option<String>) -> Result<()> {
             println!();
         }
         None => {
-            Ui::error(&format!("Profile '{}' not found", profile_id));
+            Ui::error(&format!("Profile '{}' not found in configuration", effective_profile_id));
+            Ui::info("The installed profile may have been removed. Run 'rhinolabs-ai sync' to update.");
         }
     }
 
@@ -273,8 +301,15 @@ pub fn uninstall(target_path: Option<String>) -> Result<()> {
 
     let path_display = path.display().to_string();
 
+    // Detect installed profile name
+    let profile_info = detect_installed_profile(&path);
+
     println!();
-    println!("  {} Profile will be uninstalled from:", "→".cyan());
+    if let Some((_, profile_name)) = &profile_info {
+        println!("  {} Profile '{}' will be uninstalled from:", "→".cyan(), profile_name.bold());
+    } else {
+        println!("  {} Profile will be uninstalled from:", "→".cyan());
+    }
     println!("    {}", path_display.bold());
     println!();
 

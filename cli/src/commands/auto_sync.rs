@@ -5,14 +5,12 @@
 //! - Auto-syncing configuration from GitHub
 //! - Auto-installing Main-Profile if not present
 
-use crate::ui::Ui;
 use anyhow::Result;
 use colored::Colorize;
-use rhinolabs_core::{Deploy, Paths, Profiles, ProfileType};
+use rhinolabs_core::{Deploy, Profiles, ProfileType};
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 const SESSION_MARKER_FILE: &str = "rhinolabs-session-sync";
 const SESSION_TIMEOUT_SECS: u64 = 3600; // 1 hour - consider same session
@@ -217,10 +215,4 @@ async fn check_and_install_main_profile() -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Force sync (for manual 'rhinolabs-ai sync' command)
-/// This always syncs regardless of session marker
-pub async fn force_sync() -> Result<()> {
-    super::deploy::sync().await
 }
