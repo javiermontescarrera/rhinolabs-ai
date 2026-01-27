@@ -91,7 +91,7 @@ enum ProfileAction {
         #[arg(short, long)]
         profile: String,
 
-        /// Target project path (required for Project profiles)
+        /// Target project path (defaults to current directory)
         #[arg(short = 'P', long)]
         path: Option<String>,
     },
@@ -102,16 +102,16 @@ enum ProfileAction {
         #[arg(short, long)]
         profile: String,
 
-        /// Target project path (required for Project profiles)
+        /// Target project path (defaults to current directory)
         #[arg(short = 'P', long)]
         path: Option<String>,
     },
 
     /// Uninstall profile from a project (removes .claude directory)
     Uninstall {
-        /// Target project path to uninstall from
+        /// Target project path (defaults to current directory)
         #[arg(short = 'P', long)]
-        path: String,
+        path: Option<String>,
     },
 }
 
@@ -172,7 +172,7 @@ async fn main() -> anyhow::Result<()> {
                     profile::update(&profile, path)?;
                 }
                 ProfileAction::Uninstall { path } => {
-                    profile::uninstall(&path)?;
+                    profile::uninstall(path)?;
                 }
             }
         }

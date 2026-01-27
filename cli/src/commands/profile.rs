@@ -2,7 +2,27 @@ use crate::ui::Ui;
 use anyhow::Result;
 use colored::Colorize;
 use rhinolabs_core::{Profiles, ProfileType};
+use std::io::{self, Write};
 use std::path::Path;
+
+/// Prompt user for yes/no confirmation
+fn prompt_yes_no(prompt: &str, default_yes: bool) -> bool {
+    let suffix = if default_yes { "[Y/n]" } else { "[y/N]" };
+    print!("{} {}: ", prompt, suffix);
+    io::stdout().flush().unwrap();
+
+    let mut input = String::new();
+    if io::stdin().read_line(&mut input).is_err() {
+        return default_yes;
+    }
+
+    let input = input.trim().to_lowercase();
+    if input.is_empty() {
+        return default_yes;
+    }
+
+    matches!(input.as_str(), "y" | "yes" | "si" | "sí")
+}
 
 /// List all profiles
 pub fn list() -> Result<()> {
@@ -101,18 +121,37 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
         Some(profile) => {
             Ui::step(&format!("Profile: {} ({})", profile.name, profile.id));
 
-            let path = target_path.as_deref().map(Path::new);
+            // For Project profiles: use current directory if no path specified
+            let effective_path = if profile.profile_type == ProfileType::Project {
+                let path = target_path
+                    .map(|p| std::path::PathBuf::from(p))
+                    .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-            // Validate path requirements
-            if profile.profile_type == ProfileType::Project && path.is_none() {
-                Ui::error("Project profiles require a target path.");
-                Ui::info("Usage: rhinolabs profile install --profile <id> --path <project-path>");
-                return Ok(());
-            }
+                let path_display = path.display().to_string();
+                println!();
+                println!("  {} Profile '{}' will be installed as a plugin in:", "→".cyan(), profile.name);
+                println!("    {}", path_display.bold());
+                println!();
+                println!("  This will create:");
+                println!("    • .claude-plugin/plugin.json");
+                println!("    • .claude/skills/ ({} skills)", profile.skills.len());
+                println!("    • CLAUDE.md");
+                println!();
 
-            if profile.profile_type == ProfileType::User && path.is_some() {
-                Ui::warning("User profiles ignore --path and install to ~/.claude/");
-            }
+                if !prompt_yes_no("Continue?", true) {
+                    Ui::info("Installation cancelled.");
+                    return Ok(());
+                }
+                println!();
+
+                Some(path)
+            } else {
+                // User profile - path is ignored, installs to ~/.claude/
+                if target_path.is_some() {
+                    Ui::warning("User profiles ignore --path and install to ~/.claude/");
+                }
+                None
+            };
 
             if profile.skills.is_empty() {
                 Ui::warning("This profile has no skills assigned.");
@@ -122,6 +161,7 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
 
             Ui::step(&format!("Installing {} skills...", profile.skills.len()));
 
+            let path = effective_path.as_deref();
             let result = Profiles::install(profile_id, path)?;
 
             println!();
@@ -176,16 +216,32 @@ pub fn update(profile_id: &str, target_path: Option<String>) -> Result<()> {
         Some(profile) => {
             Ui::step(&format!("Profile: {} ({})", profile.name, profile.id));
 
-            let path = target_path.as_deref().map(Path::new);
+            // For Project profiles: use current directory if no path specified
+            let effective_path = if profile.profile_type == ProfileType::Project {
+                let path = target_path
+                    .map(|p| std::path::PathBuf::from(p))
+                    .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-            if profile.profile_type == ProfileType::Project && path.is_none() {
-                Ui::error("Project profiles require a target path.");
-                Ui::info("Usage: rhinolabs profile update --profile <id> --path <project-path>");
-                return Ok(());
-            }
+                let path_display = path.display().to_string();
+                println!();
+                println!("  {} Profile '{}' will be updated in:", "→".cyan(), profile.name);
+                println!("    {}", path_display.bold());
+                println!();
+
+                if !prompt_yes_no("Continue?", true) {
+                    Ui::info("Update cancelled.");
+                    return Ok(());
+                }
+                println!();
+
+                Some(path)
+            } else {
+                None
+            };
 
             Ui::step("Updating skills to latest versions...");
 
+            let path = effective_path.as_deref();
             let result = Profiles::update_installed(profile_id, path)?;
 
             println!();
@@ -207,12 +263,20 @@ pub fn update(profile_id: &str, target_path: Option<String>) -> Result<()> {
 }
 
 /// Uninstall profile from a target path
-pub fn uninstall(target_path: &str) -> Result<()> {
+pub fn uninstall(target_path: Option<String>) -> Result<()> {
     Ui::header("Uninstalling Profile");
 
-    let path = Path::new(target_path);
+    // Use current directory if no path specified
+    let path = target_path
+        .map(|p| std::path::PathBuf::from(p))
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-    Ui::step(&format!("Target: {}", target_path));
+    let path_display = path.display().to_string();
+
+    println!();
+    println!("  {} Profile will be uninstalled from:", "→".cyan());
+    println!("    {}", path_display.bold());
+    println!();
 
     if !path.exists() {
         Ui::error("Target path does not exist");
@@ -220,18 +284,32 @@ pub fn uninstall(target_path: &str) -> Result<()> {
     }
 
     let claude_dir = path.join(".claude");
-    if !claude_dir.exists() {
-        Ui::warning("No .claude directory found at this location.");
+    let plugin_dir = path.join(".claude-plugin");
+
+    if !claude_dir.exists() && !plugin_dir.exists() {
+        Ui::warning("No profile installation found at this location.");
         return Ok(());
     }
 
-    Profiles::uninstall(path)?;
+    println!("  This will remove:");
+    if claude_dir.exists() {
+        println!("    • .claude/ (skills)");
+    }
+    if plugin_dir.exists() {
+        println!("    • .claude-plugin/ (plugin manifest)");
+    }
+    println!("    • CLAUDE.md (if generated by rhinolabs-ai)");
+    println!();
+
+    if !prompt_yes_no("Continue?", false) {
+        Ui::info("Uninstall cancelled.");
+        return Ok(());
+    }
+    println!();
+
+    Profiles::uninstall(&path)?;
 
     Ui::success("Profile uninstalled!");
-    Ui::section("Removed");
-    println!("  {} .claude/ (skills)", "✓".green());
-    println!("  {} .claude-plugin/ (plugin manifest)", "✓".green());
-    println!("  {} CLAUDE.md (if generated)", "✓".green());
 
     Ok(())
 }
