@@ -5,7 +5,7 @@
 //! - Publishing configuration to GitHub releases
 //! - Syncing configuration from GitHub releases
 
-use crate::{Paths, Profiles, Result, RhinolabsError, Settings, InstructionsManager, OutputStyles};
+use crate::{Paths, Profiles, Result, RhinolabsError, Settings, InstructionsManager};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -55,14 +55,14 @@ impl Deploy {
     /// Returns the path to the created zip file
     pub fn export_config(output_path: &Path) -> Result<(PathBuf, ConfigManifest)> {
         let plugin_dir = Paths::plugin_dir()?;
-        let config_dir = Paths::config_dir()?;
+        let config_dir = Paths::rhinolabs_config_dir()?;
 
         // Create zip file
         let zip_path = output_path.join("rhinolabs-config.zip");
         let file = File::create(&zip_path)?;
         let mut zip = ZipWriter::new(file);
 
-        let options: FileOptions<'_, ()> = FileOptions::default()
+        let options = FileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated);
 
         let mut skills_count = 0;
@@ -148,7 +148,7 @@ impl Deploy {
         zip: &mut ZipWriter<W>,
         dir: &Path,
         prefix: &str,
-        options: &FileOptions<'_, ()>,
+        options: &FileOptions,
     ) -> Result<usize> {
         let mut count = 0;
 
@@ -438,7 +438,7 @@ impl Deploy {
         let mut archive = ZipArchive::new(reader)?;
 
         let plugin_dir = Paths::plugin_dir()?;
-        let config_dir = Paths::config_dir()?;
+        let config_dir = Paths::rhinolabs_config_dir()?;
 
         let mut profiles_installed = 0;
         let mut skills_installed = 0;
