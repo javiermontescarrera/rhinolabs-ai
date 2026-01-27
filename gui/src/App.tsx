@@ -52,11 +52,6 @@ function App() {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/profiles" onClick={() => setSidebarOpen(false)}>
-              Profiles
-            </NavLink>
-          </li>
-          <li>
             <NavLink to="/settings" onClick={() => setSidebarOpen(false)}>
               Settings
             </NavLink>
@@ -64,6 +59,11 @@ function App() {
           <li>
             <NavLink to="/output-style" onClick={() => setSidebarOpen(false)}>
               Output Style
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/profiles" onClick={() => setSidebarOpen(false)}>
+              Profiles
             </NavLink>
           </li>
           <li>

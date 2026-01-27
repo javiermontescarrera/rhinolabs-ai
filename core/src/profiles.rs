@@ -392,24 +392,28 @@ impl Profiles {
     ///   - Instructions → ~/.claude/CLAUDE.md
     ///   - Settings → ~/.claude/settings.json
     ///   - Output Style → ~/.claude/output-styles/
-    /// For Project profiles: installs only skills to target_path/.claude/skills/
+    /// For Project profiles: installs as a plugin to target_path/ including:
+    ///   - Plugin manifest → target_path/.claude-plugin/plugin.json
+    ///   - Skills → target_path/.claude/skills/
+    ///   - CLAUDE.md → target_path/CLAUDE.md (generated from profile)
     pub fn install(profile_id: &str, target_path: Option<&Path>) -> Result<ProfileInstallResult> {
         let profile = Self::get(profile_id)?
             .ok_or_else(|| RhinolabsError::ConfigError(
                 format!("Profile '{}' not found", profile_id)
             ))?;
 
-        let (claude_target, skills_target) = match profile.profile_type {
+        let (base_target, claude_target, skills_target) = match profile.profile_type {
             ProfileType::User => {
                 let claude_dir = Self::claude_user_dir()?;
-                (claude_dir.clone(), claude_dir.join("skills"))
+                (claude_dir.clone(), claude_dir.clone(), claude_dir.join("skills"))
             }
             ProfileType::Project => {
                 let path = target_path.ok_or_else(|| RhinolabsError::ConfigError(
                     "Project profiles require a target path".into()
                 ))?;
+                let base = path.to_path_buf();
                 let claude_dir = Self::claude_project_dir(path);
-                (claude_dir.clone(), claude_dir.join("skills"))
+                (base, claude_dir.clone(), claude_dir.join("skills"))
             }
         };
 
@@ -431,23 +435,90 @@ impl Profiles {
         }
 
         // For Main-Profile (User type): also install instructions, settings, and output style
+        // For Project profiles: install as a plugin structure
         let (instructions_installed, settings_installed, output_style_installed) =
             if profile.profile_type == ProfileType::User {
                 Self::install_main_profile_config(&claude_target)?
             } else {
-                (None, None, None)
+                Self::install_project_profile_as_plugin(&base_target, &profile)?
             };
 
         Ok(ProfileInstallResult {
             profile_id: profile.id,
             profile_name: profile.name,
-            target_path: skills_target.display().to_string(),
+            target_path: base_target.display().to_string(),
             skills_installed,
             skills_failed,
             instructions_installed,
             settings_installed,
             output_style_installed,
         })
+    }
+
+    /// Install Project Profile as a plugin structure
+    /// Creates:
+    ///   - .claude-plugin/plugin.json (plugin manifest from profile metadata)
+    ///   - CLAUDE.md (skill loading instructions)
+    fn install_project_profile_as_plugin(
+        target_path: &Path,
+        profile: &Profile,
+    ) -> Result<(Option<bool>, Option<bool>, Option<String>)> {
+        // 1. Create .claude-plugin/plugin.json
+        let plugin_dir = target_path.join(".claude-plugin");
+        fs::create_dir_all(&plugin_dir)?;
+
+        let plugin_manifest = serde_json::json!({
+            "name": format!("profile-{}", profile.id),
+            "description": profile.description,
+            "version": "1.0.0",
+            "author": {
+                "name": "Rhinolabs"
+            },
+            "profile": {
+                "id": profile.id,
+                "name": profile.name,
+                "skills": profile.skills
+            }
+        });
+
+        let manifest_path = plugin_dir.join("plugin.json");
+        fs::write(&manifest_path, serde_json::to_string_pretty(&plugin_manifest)?)?;
+
+        // 2. Create CLAUDE.md with skill references
+        let skill_list = profile.skills.iter()
+            .map(|s| format!("- {}", s))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let claude_md_content = format!(
+            r#"# {} Profile
+
+{}
+
+## Skills
+
+This project uses the following skills from the {} profile:
+
+{}
+
+Skills are located in `.claude/skills/` and are automatically loaded by Claude Code.
+
+---
+*Installed by rhinolabs-ai*
+"#,
+            profile.name,
+            profile.description,
+            profile.name,
+            skill_list
+        );
+
+        let claude_md_path = target_path.join("CLAUDE.md");
+        // Only create if doesn't exist (don't overwrite user's custom CLAUDE.md)
+        if !claude_md_path.exists() {
+            fs::write(&claude_md_path, claude_md_content)?;
+        }
+
+        Ok((Some(true), None, None))
     }
 
     /// Install Main-Profile configuration (instructions, settings, output style)
@@ -516,14 +587,34 @@ impl Profiles {
     /// Uninstall a profile from a target path
     pub fn uninstall(target_path: &Path) -> Result<()> {
         let claude_dir = Self::claude_project_dir(target_path);
+        let plugin_dir = target_path.join(".claude-plugin");
 
-        if !claude_dir.exists() {
+        if !claude_dir.exists() && !plugin_dir.exists() {
             return Err(RhinolabsError::ConfigError(
-                format!("No .claude directory found at {}", target_path.display())
+                format!("No profile installation found at {}", target_path.display())
             ));
         }
 
-        fs::remove_dir_all(&claude_dir)?;
+        // Remove .claude directory (skills)
+        if claude_dir.exists() {
+            fs::remove_dir_all(&claude_dir)?;
+        }
+
+        // Remove .claude-plugin directory (plugin manifest)
+        if plugin_dir.exists() {
+            fs::remove_dir_all(&plugin_dir)?;
+        }
+
+        // Remove CLAUDE.md only if it was generated by us (check for marker)
+        let claude_md = target_path.join("CLAUDE.md");
+        if claude_md.exists() {
+            if let Ok(content) = fs::read_to_string(&claude_md) {
+                if content.contains("*Installed by rhinolabs-ai*") {
+                    fs::remove_file(&claude_md)?;
+                }
+            }
+        }
+
         Ok(())
     }
 

@@ -39,6 +39,13 @@ export default function Profiles() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [assignedSkills, setAssignedSkills] = useState<Set<string>>(new Set());
   const [savingAssignment, setSavingAssignment] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+
+  // Computed values
+  const categories = [...new Set(skills.map(s => s.category))].sort();
+  const filteredSkills = categoryFilter
+    ? skills.filter(s => s.category === categoryFilter)
+    : skills;
 
   useEffect(() => {
     loadData();
@@ -446,14 +453,33 @@ export default function Profiles() {
                         {savingAssignment ? 'Saving...' : 'Save Assignment'}
                       </button>
                     </div>
-                    <h3 style={{ marginBottom: '12px' }}>Available Skills</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <h3 style={{ margin: 0 }}>Available Skills</h3>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <button
+                          className={`btn btn-sm ${categoryFilter === null ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => setCategoryFilter(null)}
+                        >
+                          All ({skills.length})
+                        </button>
+                        {categories.map(cat => (
+                          <button
+                            key={cat}
+                            className={`btn btn-sm ${categoryFilter === cat ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setCategoryFilter(cat)}
+                          >
+                            {cat} ({skills.filter(s => s.category === cat).length})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <div style={SCROLLABLE_LIST_STYLE}>
-                      {skills.map((skill) => (
+                      {filteredSkills.map((skill) => (
                         <label
                           key={skill.id}
                           style={{
                             display: 'flex',
-                            alignItems: 'center',
+                            alignItems: 'flex-start',
                             padding: '12px',
                             borderBottom: '1px solid var(--border)',
                             cursor: 'pointer',
@@ -463,12 +489,23 @@ export default function Profiles() {
                             type="checkbox"
                             checked={assignedSkills.has(skill.id)}
                             onChange={() => toggleSkillAssignment(skill.id)}
-                            style={{ marginRight: '12px' }}
+                            style={{ marginRight: '12px', marginTop: '4px' }}
                           />
-                          <div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 500 }}>{skill.name}</div>
-                            <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                              {skill.id} - {skill.category}
+                            <div
+                              title={skill.description || ''}
+                              style={{
+                                fontSize: '12px',
+                                color: 'var(--text-tertiary)',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {skill.description || 'No description'}
                             </div>
                           </div>
                         </label>

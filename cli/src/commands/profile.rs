@@ -127,6 +127,14 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
             println!();
             Ui::success(&format!("Installed to: {}", result.target_path));
 
+            // Show what was created based on profile type
+            if profile.profile_type == ProfileType::Project {
+                Ui::section("Plugin Structure Created");
+                println!("  {} .claude-plugin/plugin.json", "✓".green());
+                println!("  {} .claude/skills/", "✓".green());
+                println!("  {} CLAUDE.md", "✓".green());
+            }
+
             if !result.skills_installed.is_empty() {
                 Ui::section("Skills Installed");
                 for skill in &result.skills_installed {
@@ -142,7 +150,12 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
             }
 
             println!();
-            Ui::info("Claude Code will automatically load skills from this location.");
+            if profile.profile_type == ProfileType::Project {
+                Ui::info("Profile installed as a project plugin.");
+                Ui::info("Claude Code will automatically load it when working in this directory.");
+            } else {
+                Ui::info("Claude Code will automatically load skills from this location.");
+            }
         }
         None => {
             Ui::error(&format!("Profile '{}' not found", profile_id));
@@ -215,7 +228,10 @@ pub fn uninstall(target_path: &str) -> Result<()> {
     Profiles::uninstall(path)?;
 
     Ui::success("Profile uninstalled!");
-    Ui::info(&format!("Removed: {}/.claude", target_path));
+    Ui::section("Removed");
+    println!("  {} .claude/ (skills)", "✓".green());
+    println!("  {} .claude-plugin/ (plugin manifest)", "✓".green());
+    println!("  {} CLAUDE.md (if generated)", "✓".green());
 
     Ok(())
 }
