@@ -159,7 +159,7 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
         }
         None => {
             Ui::error(&format!("Profile '{}' not found", profile_id));
-            Ui::info("Use 'rhinolabs profile list' to see available profiles.");
+            Ui::info("Use 'rhinolabs-ai profile list' to see available profiles.");
         }
     }
 

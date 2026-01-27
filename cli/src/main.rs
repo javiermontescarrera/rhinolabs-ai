@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use commands::*;
 
 #[derive(Parser)]
-#[command(name = "rhinolabs")]
+#[command(name = "rhinolabs-ai")]
 #[command(about = "Rhinolabs AI Plugin Manager for Claude Code", long_about = None)]
 #[command(version)]
 struct Cli {

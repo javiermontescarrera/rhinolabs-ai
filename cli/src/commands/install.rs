@@ -21,8 +21,8 @@ pub async fn run(local_path: Option<String>, dry_run: bool) -> Result<()> {
     // Check if already installed
     if Paths::is_plugin_installed() && !dry_run {
         Ui::warning("Plugin already installed");
-        Ui::info("Use 'rhinolabs update' to update to latest version");
-        Ui::info("Use 'rhinolabs uninstall' first if you want to reinstall");
+        Ui::info("Use 'rhinolabs-ai update' to update to latest version");
+        Ui::info("Use 'rhinolabs-ai uninstall' first if you want to reinstall");
         return Ok(());
     }
 

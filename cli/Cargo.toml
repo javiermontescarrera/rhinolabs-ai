@@ -1,12 +1,18 @@
 [package]
-name = "rhinolabs"
+name = "rhinolabs-ai-cli"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
+# Main binary: rhinolabs-ai
 [[bin]]
-name = "rhinolabs"
+name = "rhinolabs-ai"
+path = "src/main.rs"
+
+# Alias: rlai (short form)
+[[bin]]
+name = "rlai"
 path = "src/main.rs"
 
 [dependencies]

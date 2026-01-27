@@ -21,10 +21,12 @@ brew install rhinolabs/tap/rhinolabs
 ```
 
 **Commands**:
-- `rhinolabs skill list|show|install|disable|enable`
-- `rhinolabs profile list|show|install|update|uninstall`
-- `rhinolabs mcp list|add|remove|sync`
-- `rhinolabs config show|set`
+- `rhinolabs-ai skill list|show|install|disable|enable`
+- `rhinolabs-ai profile list|show|install|update|uninstall`
+- `rhinolabs-ai mcp list|add|remove|sync`
+- `rhinolabs-ai config show|set`
+
+**Alias**: `rlai` can be used as a short form (e.g., `rlai profile list`)
 
 ### 2. Plugin (`rhinolabs-claude`)
 
@@ -114,9 +116,9 @@ Profiles organize skills into reusable bundles that can be installed at differen
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      rhinolabs CLI                          │
+│                      rhinolabs-ai CLI                          │
 ├─────────────────────────────────────────────────────────────┤
-│  rhinolabs profile install --profile <id> [--path <dir>]    │
+│  rhinolabs-ai profile install --profile <id> [--path <dir>]    │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -286,7 +288,7 @@ Team Developer (CLI)
          │
          ▼
 ┌─────────────────────────────────┐
-│  rhinolabs sync                 │
+│  rhinolabs-ai sync                 │
 └─────────────────────────────────┘
          │
          ▼
@@ -307,7 +309,7 @@ Team Developer (CLI)
          ▼
 ┌─────────────────────────────────┐
 │  3. Ready! Use profiles:        │
-│  rhinolabs profile install ...  │
+│  rhinolabs-ai profile install ...  │
 └─────────────────────────────────┘
 ```
 
@@ -315,13 +317,13 @@ Team Developer (CLI)
 
 ```bash
 # Sync latest configuration (auto-runs on first command of session)
-rhinolabs sync
+rhinolabs-ai sync
 
 # Profile management
-rhinolabs profile list
-rhinolabs profile show <id>
-rhinolabs profile install --profile main
-rhinolabs profile install --profile react-stack --path ./project
+rhinolabs-ai profile list
+rhinolabs-ai profile show <id>
+rhinolabs-ai profile install --profile main
+rhinolabs-ai profile install --profile react-stack --path ./project
 ```
 
 ### GUI Commands (Lead Developer Only)
@@ -343,7 +345,7 @@ rhinolabs profile install --profile react-stack --path ./project
 
 1. Clone the repo
 2. Run install script: `./rhinolabs-claude/scripts/install.sh`
-3. Run any command (auto-sync triggers): `rhinolabs profile list`
+3. Run any command (auto-sync triggers): `rhinolabs-ai profile list`
 4. Accept Main-Profile installation when prompted
 5. Install project profiles as needed
 
@@ -352,8 +354,8 @@ Note: Team developers do NOT need GITHUB_TOKEN (only for read operations)
 ### Publishing Configuration Updates
 
 1. Make changes in GUI (profiles, skills, settings, etc.)
-2. Deploy: `rhinolabs deploy --version X.X.X`
-3. Team members run: `rhinolabs sync`
+2. Deploy: `rhinolabs-ai deploy --version X.X.X`
+3. Team members run: `rhinolabs-ai sync`
 
 ---
 

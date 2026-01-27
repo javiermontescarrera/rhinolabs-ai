@@ -27,7 +27,7 @@ pub fn run() -> Result<()> {
     } else {
         println!("  Status:       {}", "✗ Not installed".red());
         println!();
-        Ui::info("Run 'rhinolabs install' to install the plugin");
+        Ui::info("Run 'rhinolabs-ai install' to install the plugin");
     }
 
     // Claude Code info
@@ -47,7 +47,7 @@ pub fn run() -> Result<()> {
         } else {
             println!("  Status:       {}", "⚠ Not synced".yellow());
             println!();
-            Ui::info("Run 'rhinolabs sync-mcp --url <URL>' to sync configuration");
+            Ui::info("Run 'rhinolabs-ai sync-mcp --url <URL>' to sync configuration");
         }
     }
 

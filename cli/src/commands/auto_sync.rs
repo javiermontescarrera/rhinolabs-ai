@@ -150,7 +150,7 @@ pub async fn run_auto_sync() -> Result<bool> {
                 mark_synced("unconfigured");
             } else {
                 println!("{} Sync failed: {}", "⚠".yellow(), error_msg);
-                println!("  {}", "Continuing without sync. Run 'rhinolabs sync' manually later.".dimmed());
+                println!("  {}", "Continuing without sync. Run 'rhinolabs-ai sync' manually later.".dimmed());
             }
 
             println!("{}", "━━━━━━━━━━━━━━━━━━━━━━━━━━".cyan());
@@ -207,7 +207,7 @@ async fn check_and_install_main_profile() -> Result<()> {
             }
             Err(e) => {
                 println!("{} Failed to install Main-Profile: {}", "✗".red(), e);
-                println!("  {}", "Run 'rhinolabs profile install --profile main' manually.".dimmed());
+                println!("  {}", "Run 'rhinolabs-ai profile install --profile main' manually.".dimmed());
             }
         }
     } else {
@@ -219,7 +219,7 @@ async fn check_and_install_main_profile() -> Result<()> {
     Ok(())
 }
 
-/// Force sync (for manual 'rhinolabs sync' command)
+/// Force sync (for manual 'rhinolabs-ai sync' command)
 /// This always syncs regardless of session marker
 pub async fn force_sync() -> Result<()> {
     super::deploy::sync().await
