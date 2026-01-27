@@ -88,7 +88,6 @@ enum ProfileAction {
     /// Install a profile to a project
     Install {
         /// Profile ID to install
-        #[arg(short, long)]
         profile: String,
 
         /// Target project path (defaults to current directory)
@@ -99,7 +98,6 @@ enum ProfileAction {
     /// Update an installed profile with latest skill versions
     Update {
         /// Profile ID to update
-        #[arg(short, long)]
         profile: String,
 
         /// Target project path (defaults to current directory)
