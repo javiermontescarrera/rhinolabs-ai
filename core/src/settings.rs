@@ -27,19 +27,10 @@ impl Default for StatusLineConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AttributionConfig {
     pub commit: String,
     pub pr: String,
-}
-
-impl Default for AttributionConfig {
-    fn default() -> Self {
-        Self {
-            commit: String::new(),
-            pr: String::new(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

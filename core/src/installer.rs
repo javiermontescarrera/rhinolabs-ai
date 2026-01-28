@@ -80,7 +80,7 @@ impl Installer {
         }
 
         // Copy directory recursively
-        self.copy_dir_recursive(source_dir, &plugin_dir)?;
+        Self::copy_dir_recursive(source_dir, &plugin_dir)?;
 
         // Save version info
         let version_info = Version {
@@ -149,7 +149,7 @@ impl Installer {
     }
 
     /// Copy directory recursively
-    fn copy_dir_recursive(&self, src: &Path, dst: &Path) -> Result<()> {
+    fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<()> {
         fs::create_dir_all(dst)?;
 
         for entry in fs::read_dir(src)? {
@@ -163,7 +163,7 @@ impl Installer {
                 if entry.file_name() == ".git" {
                     continue;
                 }
-                self.copy_dir_recursive(&src_path, &dst_path)?;
+                Self::copy_dir_recursive(&src_path, &dst_path)?;
             } else {
                 fs::copy(&src_path, &dst_path)?;
             }
@@ -218,8 +218,8 @@ mod tests {
         fs::create_dir(source_dir.path().join(".git")).unwrap();
         fs::write(source_dir.path().join(".git").join("config"), "git config").unwrap();
 
-        let installer = Installer::new();
-        let result = installer.copy_dir_recursive(source_dir.path(), target_dir.path());
+        let _installer = Installer::new();
+        let result = Installer::copy_dir_recursive(source_dir.path(), target_dir.path());
 
         assert!(result.is_ok());
         assert!(target_dir.path().join("file1.txt").exists());

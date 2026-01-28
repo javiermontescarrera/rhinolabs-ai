@@ -212,24 +212,24 @@ impl Profiles {
             "| <!-- Add skills to this profile --> | | |".to_string()
         } else {
             // Load skill details to get names and descriptions
-            let rows: Vec<String> = skill_ids.iter().filter_map(|skill_id| {
+            let rows: Vec<String> = skill_ids.iter().map(|skill_id| {
                 if let Ok(Some(skill)) = Skills::get(skill_id) {
                     let context = if skill.description.is_empty() {
                         format!("Working with {}", skill.name)
                     } else {
                         skill.description.clone()
                     };
-                    Some(format!(
+                    format!(
                         "| {} | `{}` | `.claude/skills/{}/SKILL.md` |",
                         context,
                         skill.id,
                         skill.id
-                    ))
+                    )
                 } else {
-                    Some(format!(
+                    format!(
                         "| Working with {} | `{}` | `.claude/skills/{}/SKILL.md` |",
                         skill_id, skill_id, skill_id
-                    ))
+                    )
                 }
             }).collect();
             rows.join("\n")
@@ -602,6 +602,7 @@ IMPORTANT: When you detect any of these contexts, IMMEDIATELY read the correspon
     ///   - Instructions → ~/.claude/CLAUDE.md
     ///   - Settings → ~/.claude/settings.json
     ///   - Output Style → ~/.claude/output-styles/
+    ///
     /// For Project profiles: installs as a plugin to target_path/ including:
     ///   - Plugin manifest → target_path/.claude-plugin/plugin.json
     ///   - Skills → target_path/.claude/skills/
@@ -925,7 +926,6 @@ This profile generates:
     /// Install Main-Profile configuration (instructions, settings, output style)
     fn install_main_profile_config(claude_target: &Path) -> Result<(Option<bool>, Option<bool>, Option<String>)> {
         let mut instructions_installed = None;
-        let settings_installed;
         let mut output_style_installed = None;
 
         // 1. Install Instructions (CLAUDE.md)
@@ -941,7 +941,7 @@ This profile generates:
         let settings_target = claude_target.join("settings.json");
         let settings_json = serde_json::to_string_pretty(&settings)?;
         fs::write(&settings_target, settings_json)?;
-        settings_installed = Some(true);
+        let settings_installed = Some(true);
 
         // 3. Install Active Output Style
         if let Ok(Some(style)) = OutputStyles::get_active() {

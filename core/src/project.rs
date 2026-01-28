@@ -1,7 +1,7 @@
 use crate::{Paths, Result, RhinolabsError};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -204,7 +204,7 @@ impl Project {
         (true, branch, has_remote, remote_url, has_changes)
     }
 
-    fn get_plugin_version(dir: &PathBuf) -> Option<String> {
+    fn get_plugin_version(dir: &Path) -> Option<String> {
         let manifest_path = dir.join(".claude-plugin").join("plugin.json");
         if manifest_path.exists() {
             fs::read_to_string(&manifest_path)

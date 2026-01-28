@@ -13,7 +13,7 @@ use rhinolabs_core::{
 use rhinolabs_core::diagnostics::DiagnosticReport;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 // ============================================
@@ -679,7 +679,7 @@ fn collect_skill_files(base_path: &PathBuf, current_path: &PathBuf, files: &mut 
     Ok(())
 }
 
-fn detect_language(path: &PathBuf) -> Option<String> {
+fn detect_language(path: &Path) -> Option<String> {
     let ext = path.extension()?.to_str()?;
     let lang = match ext {
         "md" => "markdown",

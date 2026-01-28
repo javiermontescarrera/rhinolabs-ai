@@ -72,7 +72,7 @@ impl Deploy {
         let profiles_path = config_dir.join("profiles.json");
         if profiles_path.exists() {
             let content = fs::read_to_string(&profiles_path)?;
-            zip.start_file("profiles.json", options.clone())?;
+            zip.start_file("profiles.json", options)?;
             zip.write_all(content.as_bytes())?;
         }
 
@@ -86,14 +86,14 @@ impl Deploy {
         let instructions = InstructionsManager::get()?;
         let has_instructions = !instructions.content.is_empty();
         if has_instructions {
-            zip.start_file("CLAUDE.md", options.clone())?;
+            zip.start_file("CLAUDE.md", options)?;
             zip.write_all(instructions.content.as_bytes())?;
         }
 
         // 4. Export settings.json
         let settings = Settings::get()?;
         let settings_json = serde_json::to_string_pretty(&settings)?;
-        zip.start_file("settings.json", options.clone())?;
+        zip.start_file("settings.json", options)?;
         zip.write_all(settings_json.as_bytes())?;
 
         // 5. Export output-styles directory
@@ -106,7 +106,7 @@ impl Deploy {
         let mcp_path = plugin_dir.join(".mcp.json");
         if mcp_path.exists() {
             let content = fs::read_to_string(&mcp_path)?;
-            zip.start_file(".mcp.json", options.clone())?;
+            zip.start_file(".mcp.json", options)?;
             zip.write_all(content.as_bytes())?;
         }
 
@@ -114,7 +114,7 @@ impl Deploy {
         let skills_config_path = plugin_dir.join(".skills-config.json");
         if skills_config_path.exists() {
             let content = fs::read_to_string(&skills_config_path)?;
-            zip.start_file(".skills-config.json", options.clone())?;
+            zip.start_file(".skills-config.json", options)?;
             zip.write_all(content.as_bytes())?;
         }
 
@@ -176,7 +176,7 @@ impl Deploy {
                 let mut content = Vec::new();
                 file.read_to_end(&mut content)?;
 
-                zip.start_file(&zip_path, options.clone())?;
+                zip.start_file(&zip_path, *options)?;
                 zip.write_all(&content)?;
                 count += 1;
             }

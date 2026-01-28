@@ -142,7 +142,7 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
             // For Project profiles: use current directory if no path specified
             let effective_path = if profile.profile_type == ProfileType::Project {
                 let path = target_path
-                    .map(|p| std::path::PathBuf::from(p))
+                    .map(std::path::PathBuf::from)
                     .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
                 let path_display = path.display().to_string();
@@ -230,7 +230,7 @@ pub fn update(profile_id: Option<String>, target_path: Option<String>) -> Result
 
     // Determine target path (default to current directory)
     let target = target_path
-        .map(|p| std::path::PathBuf::from(p))
+        .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
     // If no profile specified, detect from installed plugin
@@ -296,7 +296,7 @@ pub fn uninstall(target_path: Option<String>) -> Result<()> {
 
     // Use current directory if no path specified
     let path = target_path
-        .map(|p| std::path::PathBuf::from(p))
+        .map(std::path::PathBuf::from)
         .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
     let path_display = path.display().to_string();
