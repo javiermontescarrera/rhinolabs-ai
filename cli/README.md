@@ -2,6 +2,33 @@
 
 Command-line interface for managing Rhinolabs AI profiles and plugin configuration.
 
+## Overview
+
+```mermaid
+graph LR
+    subgraph "CLI Capabilities"
+        SYNC[Sync Config<br/>from GitHub]
+        PROFILE[Profile<br/>Management]
+        PLUGIN[Plugin<br/>Management]
+        MCP[MCP<br/>Configuration]
+    end
+
+    subgraph "Local Storage"
+        CONFIG[~/.config/rhinolabs-ai/]
+        CLAUDE[~/.claude/]
+        PROJECT[./project/.claude-plugin/]
+    end
+
+    SYNC --> CONFIG
+    PROFILE --> CLAUDE
+    PROFILE --> PROJECT
+    PLUGIN --> CONFIG
+    MCP --> CONFIG
+
+    style SYNC fill:#38a169,stroke:#68d391,color:#fff
+    style PROFILE fill:#3182ce,stroke:#63b3ed,color:#fff
+```
+
 ## Installation
 
 ### Via Homebrew (Recommended)
@@ -25,13 +52,58 @@ cargo build --release
 # Binary at: target/release/rhinolabs-ai
 ```
 
-## Usage
+## Command Structure
 
-The CLI is available as `rhinolabs-ai` or the shorter alias `rlai`.
+```mermaid
+graph TB
+    CLI[rhinolabs-ai / rlai]
 
-### Auto-Sync
+    CLI --> SYNC[sync]
+    CLI --> PROFILE[profile]
+    CLI --> INSTALL[install]
+    CLI --> UPDATE[update]
+    CLI --> UNINSTALL[uninstall]
+    CLI --> STATUS[status]
+    CLI --> DOCTOR[doctor]
+    CLI --> SYNCMCP[sync-mcp]
 
-On the first command of each terminal session, the CLI automatically syncs configuration from GitHub. This ensures your team always has the latest profiles and skills.
+    PROFILE --> LIST[list]
+    PROFILE --> SHOW[show]
+    PROFILE --> INST[install]
+    PROFILE --> UPD[update]
+    PROFILE --> UNINST[uninstall]
+
+    style CLI fill:#805ad5,stroke:#9f7aea,color:#fff
+    style SYNC fill:#38a169,stroke:#68d391,color:#fff
+    style PROFILE fill:#3182ce,stroke:#63b3ed,color:#fff
+```
+
+## Auto-Sync Feature
+
+On the first command of each terminal session, the CLI automatically syncs configuration from GitHub.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant Marker as /tmp/rhinolabs-session-sync
+    participant GitHub
+
+    User->>CLI: rhinolabs-ai profile list
+    CLI->>Marker: Check if exists
+    alt First command of session
+        Marker-->>CLI: Not found
+        CLI->>GitHub: Fetch latest config
+        GitHub-->>CLI: rhinolabs-config.zip
+        CLI->>CLI: Update local config
+        CLI->>Marker: Create marker file
+        CLI->>User: Show sync result
+        CLI->>User: Prompt Main-Profile install
+    else Already synced
+        Marker-->>CLI: Exists (< 1 hour old)
+        CLI->>User: Skip sync, run command
+    end
+```
 
 ```bash
 # First command triggers auto-sync
@@ -47,9 +119,19 @@ rhinolabs-ai profile list
 # Install Main-Profile now? [Y/n]:
 ```
 
-### Commands
+## Commands Reference
 
-#### Profile Management
+### Profile Management
+
+```mermaid
+flowchart LR
+    subgraph "Profile Commands"
+        LIST[profile list] --> SHOW[profile show]
+        SHOW --> INSTALL[profile install]
+        INSTALL --> UPDATE[profile update]
+        UPDATE --> UNINSTALL[profile uninstall]
+    end
+```
 
 ```bash
 # List all available profiles
@@ -77,14 +159,14 @@ rhinolabs-ai profile uninstall
 rhinolabs-ai profile uninstall -P /path/to/project
 ```
 
-#### Configuration Sync
+### Configuration Sync
 
 ```bash
 # Manual sync from GitHub
 rhinolabs-ai sync
 ```
 
-#### Plugin Management
+### Plugin Management
 
 ```bash
 # Install base plugin
@@ -106,7 +188,7 @@ rhinolabs-ai status
 rhinolabs-ai doctor
 ```
 
-#### MCP Configuration
+### MCP Configuration
 
 ```bash
 # Sync MCP servers from configured source
@@ -122,39 +204,121 @@ rhinolabs-ai sync-mcp --file ./mcp-config.json
 rhinolabs-ai sync-mcp --dry-run
 ```
 
+## Profile Installation Flow
+
+```mermaid
+flowchart TB
+    START[rhinolabs-ai profile install X]
+    CHECK_PROFILE{Profile exists?}
+    CHECK_PATH{Path specified?}
+    USE_CWD[Use current directory]
+    USE_PATH[Use specified path]
+    CONFIRM[Show confirmation]
+    ACCEPT{User accepts?}
+    INSTALL_SKILLS[Copy skills to .claude/skills/]
+    CREATE_MANIFEST[Create .claude-plugin/plugin.json]
+    CREATE_CLAUDE[Generate CLAUDE.md]
+    DONE[Installation complete]
+    CANCEL[Installation cancelled]
+
+    START --> CHECK_PROFILE
+    CHECK_PROFILE -->|Yes| CHECK_PATH
+    CHECK_PROFILE -->|No| ERROR[Profile not found]
+    CHECK_PATH -->|No| USE_CWD
+    CHECK_PATH -->|Yes| USE_PATH
+    USE_CWD --> CONFIRM
+    USE_PATH --> CONFIRM
+    CONFIRM --> ACCEPT
+    ACCEPT -->|Yes| INSTALL_SKILLS
+    ACCEPT -->|No| CANCEL
+    INSTALL_SKILLS --> CREATE_MANIFEST
+    CREATE_MANIFEST --> CREATE_CLAUDE
+    CREATE_CLAUDE --> DONE
+
+    style START fill:#805ad5,stroke:#9f7aea,color:#fff
+    style DONE fill:#38a169,stroke:#68d391,color:#fff
+    style CANCEL fill:#e53e3e,stroke:#fc8181,color:#fff
+```
+
 ## Profile Types
 
 ### User Profile (Main-Profile)
+
+```mermaid
+graph TB
+    subgraph "Main-Profile Installation"
+        MAIN[Main-Profile]
+        CLAUDE_DIR[~/.claude/]
+        SKILLS[skills/]
+        INSTRUCTIONS[CLAUDE.md]
+    end
+
+    MAIN --> CLAUDE_DIR
+    CLAUDE_DIR --> SKILLS
+    CLAUDE_DIR --> INSTRUCTIONS
+
+    style MAIN fill:#805ad5,stroke:#9f7aea,color:#fff
+```
 
 - **Scope**: Applies to ALL projects
 - **Location**: `~/.claude/`
 - **Purpose**: Agency-wide standards and general skills
 - **Installation**: Prompted automatically on first sync
 
-```bash
-# Main-Profile is installed automatically when you accept the prompt
-# Or install manually:
-rhinolabs-ai profile install main
-```
-
 ### Project Profiles
+
+```mermaid
+graph TB
+    subgraph "Project Profile Installation"
+        PROFILE[react-stack]
+        PLUGIN_DIR[.claude-plugin/]
+        CLAUDE_DIR[.claude/]
+        MANIFEST[plugin.json]
+        SKILLS[skills/]
+        INSTRUCTIONS[CLAUDE.md]
+    end
+
+    PROFILE --> PLUGIN_DIR
+    PROFILE --> CLAUDE_DIR
+    PLUGIN_DIR --> MANIFEST
+    CLAUDE_DIR --> SKILLS
+    CLAUDE_DIR --> INSTRUCTIONS
+
+    style PROFILE fill:#3182ce,stroke:#63b3ed,color:#fff
+```
 
 - **Scope**: Applies only to specific project
 - **Location**: `<project>/.claude-plugin/`
 - **Purpose**: Tech-stack specific skills
 
-```bash
-# Install to current directory
-cd ~/my-react-app
-rhinolabs-ai profile install react-stack
-
-# This creates:
-# .claude-plugin/plugin.json  - Profile manifest
-# .claude/skills/             - Skills directory
-# CLAUDE.md                   - Instructions
-```
-
 ## Monorepo Example
+
+```mermaid
+graph TB
+    subgraph "~/monorepo"
+        subgraph "apps/"
+            WEB[web/]
+            API[api/]
+        end
+        subgraph "packages/"
+            SHARED[shared/]
+        end
+    end
+
+    subgraph "Installed"
+        WEB_PLUGIN[.claude-plugin/<br/>react-stack]
+        API_PLUGIN[.claude-plugin/<br/>rust-backend]
+        SHARED_PLUGIN[.claude-plugin/<br/>ts-lib]
+    end
+
+    WEB --> WEB_PLUGIN
+    API --> API_PLUGIN
+    SHARED --> SHARED_PLUGIN
+
+    style WEB_PLUGIN fill:#3182ce,stroke:#63b3ed,color:#fff
+    style API_PLUGIN fill:#dd6b20,stroke:#ed8936,color:#fff
+    style SHARED_PLUGIN fill:#805ad5,stroke:#9f7aea,color:#fff
+```
 
 ```bash
 cd ~/monorepo
@@ -167,11 +331,6 @@ rhinolabs-ai profile install rust-backend -P ./apps/api
 
 # Shared library (TypeScript)
 rhinolabs-ai profile install ts-lib -P ./packages/shared
-
-# Claude Code combines profiles:
-# Working in ~/monorepo/apps/web/ loads:
-#   - Main-Profile (user-level)
-#   - react-stack (project-level)
 ```
 
 ## Configuration
@@ -180,16 +339,40 @@ Configuration is stored in `~/.config/rhinolabs-ai/`:
 
 ```
 ~/.config/rhinolabs-ai/
-├── profiles.json       # Profile definitions
+├── profiles.json       # Profile definitions (synced from GitHub)
+├── skills/             # Skill definitions (synced from GitHub)
 ├── .project.json       # GitHub repository settings
 └── ...
 ```
 
-## Environment Variables
+## Security Model
 
-| Variable | Description |
-|----------|-------------|
-| `GITHUB_TOKEN` | Not required for CLI (read-only operations) |
+```mermaid
+graph LR
+    subgraph "CLI Permissions"
+        READ[Read Operations]
+        SYNC[Sync from GitHub]
+        INSTALL[Install Profiles]
+    end
+
+    subgraph "NOT Available in CLI"
+        DEPLOY[Deploy to GitHub]
+        EXPORT[Export Config]
+        MODIFY[Modify Shared Config]
+    end
+
+    READ --> ALLOWED[Allowed]
+    SYNC --> ALLOWED
+    INSTALL --> ALLOWED
+    DEPLOY --> BLOCKED[GUI Only]
+    EXPORT --> BLOCKED
+    MODIFY --> BLOCKED
+
+    style ALLOWED fill:#38a169,stroke:#68d391,color:#fff
+    style BLOCKED fill:#e53e3e,stroke:#fc8181,color:#fff
+```
+
+Team developers cannot modify shared configuration - only sync and install locally.
 
 ## Troubleshooting
 
@@ -224,6 +407,43 @@ ls -la ~/.claude/
 ls -la ~/.config/rhinolabs-ai/
 ```
 
+## Architecture
+
+```mermaid
+graph TB
+    subgraph "CLI Package"
+        MAIN[main.rs<br/>Entry Point]
+        COMMANDS[commands/]
+        UI[ui.rs<br/>Terminal UI]
+    end
+
+    subgraph "Commands"
+        PROFILE_CMD[profile.rs]
+        DEPLOY_CMD[deploy.rs]
+        AUTO_SYNC[auto_sync.rs]
+        INSTALL_CMD[install.rs]
+        STATUS_CMD[status.rs]
+    end
+
+    subgraph "Core Library"
+        CORE[rhinolabs-core]
+    end
+
+    MAIN --> COMMANDS
+    MAIN --> UI
+    COMMANDS --> PROFILE_CMD
+    COMMANDS --> DEPLOY_CMD
+    COMMANDS --> AUTO_SYNC
+    COMMANDS --> INSTALL_CMD
+    COMMANDS --> STATUS_CMD
+    PROFILE_CMD --> CORE
+    DEPLOY_CMD --> CORE
+    AUTO_SYNC --> CORE
+
+    style MAIN fill:#805ad5,stroke:#9f7aea,color:#fff
+    style CORE fill:#4a5568,stroke:#718096,color:#fff
+```
+
 ## Development
 
 ### Building
@@ -244,38 +464,6 @@ cargo test
 cargo run -- profile list
 cargo run -- sync
 ```
-
-## Architecture
-
-The CLI uses the shared `rhinolabs-core` library for all operations:
-
-```
-cli/
-├── src/
-│   ├── main.rs           # Entry point, command parsing
-│   ├── commands/
-│   │   ├── profile.rs    # Profile commands
-│   │   ├── deploy.rs     # Sync command
-│   │   ├── auto_sync.rs  # Auto-sync logic
-│   │   ├── install.rs    # Plugin install
-│   │   ├── update.rs     # Plugin update
-│   │   ├── uninstall.rs  # Plugin uninstall
-│   │   ├── status.rs     # Status display
-│   │   ├── doctor.rs     # Diagnostics
-│   │   └── sync_mcp.rs   # MCP sync
-│   └── ui.rs             # Terminal UI helpers
-└── Cargo.toml
-```
-
-## Security
-
-The CLI is designed for **read-only operations**:
-
-- **Sync**: Downloads configuration from GitHub (no write access needed)
-- **Profile install**: Installs locally to user's machine
-- **No deploy**: Deploy is GUI-only to prevent unauthorized config changes
-
-This ensures team developers cannot accidentally (or intentionally) modify the shared configuration.
 
 ---
 

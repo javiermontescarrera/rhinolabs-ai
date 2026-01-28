@@ -4,6 +4,32 @@ Base plugin for Claude Code with curated skills for consistent development stand
 
 ## Overview
 
+```mermaid
+graph TB
+    subgraph "Plugin Contents"
+        MANIFEST[.claude-plugin/<br/>plugin.json]
+        SKILLS[skills/<br/>Skill Library]
+        STYLES[output-styles/<br/>Response Formats]
+        CLAUDE_MD[CLAUDE.md<br/>Instructions]
+        SETTINGS[settings.json<br/>Configuration]
+        MCP_CONFIG[.mcp.json<br/>MCP Servers]
+    end
+
+    subgraph "Claude Code"
+        RUNTIME[Claude Code Runtime]
+    end
+
+    MANIFEST --> RUNTIME
+    SKILLS --> RUNTIME
+    STYLES --> RUNTIME
+    CLAUDE_MD --> RUNTIME
+    SETTINGS --> RUNTIME
+    MCP_CONFIG --> RUNTIME
+
+    style SKILLS fill:#38a169,stroke:#68d391,color:#fff
+    style RUNTIME fill:#805ad5,stroke:#9f7aea,color:#fff
+```
+
 This plugin provides:
 
 - **Skills**: Curated coding standards and best practices
@@ -42,7 +68,47 @@ Copy the `rhinolabs-claude` folder to:
 | Linux | `~/.config/claude-code/plugins/` |
 | Windows | `%APPDATA%\Claude Code\plugins\` |
 
-## Structure
+## Plugin Structure
+
+```mermaid
+graph TB
+    subgraph "rhinolabs-claude/"
+        subgraph "Plugin Manifest"
+            PLUGIN_DIR[.claude-plugin/]
+            PLUGIN_JSON[plugin.json]
+        end
+
+        subgraph "Skills Library"
+            SKILLS_DIR[skills/]
+            SKILL1[rhinolabs-standards/]
+            SKILL2[react-19/]
+            SKILL3[typescript/]
+            SKILL_N[...]
+        end
+
+        subgraph "Configuration"
+            STYLES_DIR[output-styles/]
+            CLAUDE_MD[CLAUDE.md]
+            SETTINGS[settings.json]
+            MCP[.mcp.json]
+            SKILLS_CONFIG[.skills-config.json]
+        end
+
+        subgraph "Installation"
+            SCRIPTS[scripts/]
+            INSTALL_SH[install.sh]
+            INSTALL_PS1[install.ps1]
+        end
+    end
+
+    PLUGIN_DIR --> PLUGIN_JSON
+    SKILLS_DIR --> SKILL1
+    SKILLS_DIR --> SKILL2
+    SKILLS_DIR --> SKILL3
+
+    style SKILLS_DIR fill:#38a169,stroke:#68d391,color:#fff
+    style PLUGIN_JSON fill:#805ad5,stroke:#9f7aea,color:#fff
+```
 
 ```
 rhinolabs-claude/
@@ -75,6 +141,60 @@ rhinolabs-claude/
 ## Skills
 
 Skills are organized by category:
+
+```mermaid
+graph TB
+    subgraph "Skill Categories"
+        CORP[Corporate Standards]
+        FRONTEND[Frontend Development]
+        BACKEND[Backend Development]
+        TESTING[Testing]
+        AI[AI Integration]
+        UTILS[Utilities]
+    end
+
+    subgraph "Corporate"
+        STANDARDS[rhinolabs-standards]
+        ARCH[rhinolabs-architecture]
+        SEC[rhinolabs-security]
+    end
+
+    subgraph "Frontend"
+        REACT[react-19]
+        TS[typescript]
+        TW[tailwind-4]
+        ZOD[zod-4]
+        ZUSTAND[zustand-5]
+        NEXT[nextjs-15]
+    end
+
+    subgraph "Backend"
+        DJANGO[django-drf]
+        RUST[rust-patterns]
+    end
+
+    subgraph "Testing"
+        STRATEGIES[testing-strategies]
+        PW[playwright]
+        PYTEST[pytest]
+    end
+
+    CORP --> STANDARDS
+    CORP --> ARCH
+    CORP --> SEC
+    FRONTEND --> REACT
+    FRONTEND --> TS
+    FRONTEND --> TW
+    BACKEND --> DJANGO
+    BACKEND --> RUST
+    TESTING --> STRATEGIES
+    TESTING --> PW
+
+    style CORP fill:#e53e3e,stroke:#fc8181,color:#fff
+    style FRONTEND fill:#3182ce,stroke:#63b3ed,color:#fff
+    style BACKEND fill:#dd6b20,stroke:#ed8936,color:#fff
+    style TESTING fill:#38a169,stroke:#68d391,color:#fff
+```
 
 ### Corporate Standards
 
@@ -124,6 +244,22 @@ Skills are organized by category:
 
 ## Skill Format
 
+```mermaid
+graph TB
+    subgraph "SKILL.md Structure"
+        FRONTMATTER[YAML Frontmatter<br/>name, description, version, category, triggers]
+        TITLE[# Skill Title]
+        CONTENT[Instructions & Examples]
+        SECTIONS[## Sections]
+    end
+
+    FRONTMATTER --> TITLE
+    TITLE --> CONTENT
+    CONTENT --> SECTIONS
+
+    style FRONTMATTER fill:#805ad5,stroke:#9f7aea,color:#fff
+```
+
 Each skill is a Markdown file with YAML frontmatter:
 
 ```markdown
@@ -162,6 +298,29 @@ Content...
 
 ## Output Styles
 
+```mermaid
+graph LR
+    subgraph "Available Styles"
+        DETAILED[detailed<br/>Full explanations]
+        CONCISE[concise<br/>Brief responses]
+        CODE[code-only<br/>Minimal text]
+        EDU[educational<br/>Teaching focus]
+    end
+
+    subgraph "Configuration"
+        SETTINGS[settings.json]
+        ACTIVE[outputStyle]
+    end
+
+    DETAILED --> ACTIVE
+    CONCISE --> ACTIVE
+    CODE --> ACTIVE
+    EDU --> ACTIVE
+    ACTIVE --> SETTINGS
+
+    style CONCISE fill:#38a169,stroke:#68d391,color:#fff
+```
+
 Customize how Claude formats responses:
 
 | Style | Description |
@@ -184,6 +343,22 @@ Settings > Output Style > Select style
 ```
 
 ## MCP Configuration
+
+```mermaid
+graph TB
+    subgraph ".mcp.json"
+        SERVERS[servers]
+        SERVER1[server-name]
+        CMD[command]
+        ARGS[args]
+        ENV[env]
+    end
+
+    SERVERS --> SERVER1
+    SERVER1 --> CMD
+    SERVER1 --> ARGS
+    SERVER1 --> ENV
+```
 
 Pre-configured MCP servers in `.mcp.json`:
 
@@ -222,6 +397,20 @@ Customize via GUI (Settings > Instructions) or edit directly.
 
 ## Configuration Files
 
+```mermaid
+graph TB
+    subgraph "Configuration Files"
+        PLUGIN[plugin.json<br/>Plugin metadata]
+        SETTINGS[settings.json<br/>User preferences]
+        MCP[.mcp.json<br/>MCP servers]
+        SKILLS_CFG[.skills-config.json<br/>Skill states]
+        CLAUDE[CLAUDE.md<br/>Instructions]
+    end
+
+    style PLUGIN fill:#805ad5,stroke:#9f7aea,color:#fff
+    style SETTINGS fill:#3182ce,stroke:#63b3ed,color:#fff
+```
+
 | File | Purpose |
 |------|---------|
 | `plugin.json` | Plugin metadata (name, version, author) |
@@ -231,6 +420,34 @@ Customize via GUI (Settings > Instructions) or edit directly.
 | `CLAUDE.md` | Claude instructions |
 
 ## Creating Custom Skills
+
+```mermaid
+flowchart TB
+    START[Want to create a skill?]
+    USE_CREATOR{Use skill-creator?}
+    ASK_CLAUDE[Ask Claude:<br/>"Create a new skill for X"]
+    MANUAL[Create manually]
+    CREATE_DIR[mkdir skills/my-skill]
+    CREATE_FILE[Create SKILL.md]
+    ADD_FRONTMATTER[Add YAML frontmatter]
+    ADD_CONTENT[Add instructions]
+    RESTART[Restart Claude Code]
+    DONE[Skill available]
+
+    START --> USE_CREATOR
+    USE_CREATOR -->|Yes| ASK_CLAUDE
+    USE_CREATOR -->|No| MANUAL
+    ASK_CLAUDE --> DONE
+    MANUAL --> CREATE_DIR
+    CREATE_DIR --> CREATE_FILE
+    CREATE_FILE --> ADD_FRONTMATTER
+    ADD_FRONTMATTER --> ADD_CONTENT
+    ADD_CONTENT --> RESTART
+    RESTART --> DONE
+
+    style ASK_CLAUDE fill:#38a169,stroke:#68d391,color:#fff
+    style DONE fill:#805ad5,stroke:#9f7aea,color:#fff
+```
 
 1. Use the skill-creator:
 
@@ -301,6 +518,30 @@ Remove-Item -Recurse "$env:APPDATA\Claude Code\plugins\rhinolabs-claude"
 
 ### Skills Not Loading
 
+```mermaid
+flowchart TB
+    PROBLEM[Skills not loading]
+    CHECK_STATUS[rhinolabs-ai status]
+    INSTALLED{Plugin installed?}
+    CHECK_DIR[Check plugin directory]
+    EXISTS{Directory exists?}
+    REINSTALL[rhinolabs-ai install]
+    RESTART[Restart Claude Code]
+    FIXED[Skills working]
+
+    PROBLEM --> CHECK_STATUS
+    CHECK_STATUS --> INSTALLED
+    INSTALLED -->|No| REINSTALL
+    INSTALLED -->|Yes| CHECK_DIR
+    CHECK_DIR --> EXISTS
+    EXISTS -->|No| REINSTALL
+    EXISTS -->|Yes| RESTART
+    REINSTALL --> RESTART
+    RESTART --> FIXED
+
+    style FIXED fill:#38a169,stroke:#68d391,color:#fff
+```
+
 1. Verify plugin is installed:
    ```bash
    rhinolabs-ai status
@@ -332,6 +573,24 @@ chmod -R 755 ~/.config/claude-code/plugins/rhinolabs-claude
 ```
 
 ## Contributing Skills
+
+```mermaid
+flowchart LR
+    FORK[Fork Repository]
+    CREATE[Create Skill]
+    TEST[Test with Claude]
+    PR[Submit PR]
+    REVIEW[Review]
+    MERGE[Merged]
+
+    FORK --> CREATE
+    CREATE --> TEST
+    TEST --> PR
+    PR --> REVIEW
+    REVIEW --> MERGE
+
+    style MERGE fill:#38a169,stroke:#68d391,color:#fff
+```
 
 1. Fork the repository
 2. Create skill in `skills/` directory

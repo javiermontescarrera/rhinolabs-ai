@@ -4,20 +4,112 @@ Shared Rust library providing core functionality for the Rhinolabs AI ecosystem.
 
 ## Overview
 
-`rhinolabs-core` is used by both the CLI and GUI to ensure consistent behavior across all interfaces. It handles:
+```mermaid
+graph TB
+    subgraph "Consumers"
+        CLI[CLI Tool]
+        GUI[GUI App]
+    end
 
-- Profile management (CRUD, installation)
-- Skill management
-- Plugin installation and updates
-- Configuration sync (deploy/sync)
-- MCP server configuration
-- Cross-platform path resolution
+    subgraph "rhinolabs-core"
+        PROFILES[Profiles]
+        SKILLS[Skills]
+        DEPLOY[Deploy]
+        INSTALLER[Installer]
+        PATHS[Paths]
+        SETTINGS[Settings]
+        MCP[MCP]
+    end
+
+    subgraph "Storage"
+        FS[File System]
+        GH[GitHub API]
+    end
+
+    CLI --> PROFILES
+    CLI --> SKILLS
+    CLI --> DEPLOY
+    GUI --> PROFILES
+    GUI --> SKILLS
+    GUI --> DEPLOY
+    GUI --> INSTALLER
+
+    PROFILES --> FS
+    SKILLS --> FS
+    DEPLOY --> GH
+    INSTALLER --> FS
+
+    style CLI fill:#3182ce,stroke:#63b3ed,color:#fff
+    style GUI fill:#805ad5,stroke:#9f7aea,color:#fff
+```
+
+`rhinolabs-core` is used by both the CLI and GUI to ensure consistent behavior across all interfaces.
+
+## Module Architecture
+
+```mermaid
+graph TB
+    subgraph "Public API"
+        LIB[lib.rs<br/>Public Exports]
+    end
+
+    subgraph "Data Management"
+        PROFILES[profiles.rs<br/>Profile CRUD]
+        SKILLS[skills.rs<br/>Skill Management]
+        SETTINGS[settings.rs<br/>Plugin Settings]
+        INSTRUCTIONS[instructions.rs<br/>CLAUDE.md]
+        OUTPUT[output_styles.rs<br/>Response Formats]
+    end
+
+    subgraph "Operations"
+        DEPLOY[deploy.rs<br/>Export/Deploy/Sync]
+        INSTALLER[installer.rs<br/>Plugin Install]
+        MCP[mcp.rs<br/>MCP Config]
+    end
+
+    subgraph "Utilities"
+        PATHS[paths.rs<br/>Path Resolution]
+        PROJECT[project.rs<br/>GitHub Config]
+    end
+
+    LIB --> PROFILES
+    LIB --> SKILLS
+    LIB --> DEPLOY
+    LIB --> INSTALLER
+    PROFILES --> PATHS
+    SKILLS --> PATHS
+    DEPLOY --> PROJECT
+    DEPLOY --> PATHS
+
+    style LIB fill:#805ad5,stroke:#9f7aea,color:#fff
+    style DEPLOY fill:#e53e3e,stroke:#fc8181,color:#fff
+```
 
 ## Modules
 
-### `profiles.rs`
+### profiles.rs
 
 Profile management and installation.
+
+```mermaid
+flowchart LR
+    subgraph "Profile Operations"
+        LIST[list] --> GET[get]
+        GET --> CREATE[create]
+        CREATE --> UPDATE[update]
+        UPDATE --> DELETE[delete]
+    end
+
+    subgraph "Installation"
+        INSTALL[install]
+        UPDATE_INST[update_installed]
+        UNINSTALL[uninstall]
+    end
+
+    DELETE --> INSTALL
+    INSTALL --> UPDATE_INST
+    UPDATE_INST --> UNINSTALL
+```
 
 ```rust
 use rhinolabs_core::{Profiles, ProfileType};
@@ -46,9 +138,32 @@ let result = Profiles::update_installed("react-stack", Some(Path::new("./project
 Profiles::uninstall(Path::new("./project"))?;
 ```
 
-### `skills.rs`
+### skills.rs
 
 Skill management and retrieval.
+
+```mermaid
+graph TB
+    subgraph "Skill Sources"
+        BUILTIN[Built-in Skills]
+        REMOTE[Remote Skills]
+        CUSTOM[Custom Skills]
+    end
+
+    subgraph "Operations"
+        LIST[list]
+        GET[get]
+        FETCH[fetch_remote]
+        BY_PROFILE[list_by_profile]
+    end
+
+    BUILTIN --> LIST
+    REMOTE --> LIST
+    CUSTOM --> LIST
+    LIST --> GET
+    GET --> BY_PROFILE
+    FETCH --> REMOTE
+```
 
 ```rust
 use rhinolabs_core::Skills;
@@ -66,9 +181,38 @@ let skills = Skills::list_by_profile("react-stack")?;
 Skills::fetch_remote("anthropic-official")?;
 ```
 
-### `deploy.rs`
+### deploy.rs
 
 Configuration export, deploy, and sync.
+
+```mermaid
+sequenceDiagram
+    participant App as CLI/GUI
+    participant Deploy as Deploy Module
+    participant FS as File System
+    participant GH as GitHub API
+
+    Note over App,GH: Export
+    App->>Deploy: export_config(path)
+    Deploy->>FS: Read profiles, skills, settings
+    Deploy->>FS: Create rhinolabs-config.zip
+    Deploy-->>App: (zip_path, manifest)
+
+    Note over App,GH: Deploy (GUI Only)
+    App->>Deploy: deploy(version, changelog)
+    Deploy->>Deploy: export_config()
+    Deploy->>GH: Create Release
+    Deploy->>GH: Upload Asset
+    GH-->>Deploy: release_url, asset_url
+    Deploy-->>App: DeployResult
+
+    Note over App,GH: Sync (CLI)
+    App->>Deploy: sync()
+    Deploy->>GH: Get Latest Release
+    Deploy->>GH: Download Asset
+    Deploy->>FS: Extract to config dir
+    Deploy-->>App: SyncResult
+```
 
 ```rust
 use rhinolabs_core::Deploy;
@@ -83,9 +227,32 @@ let result = Deploy::deploy("1.0.0", "Release notes").await?;
 let result = Deploy::sync().await?;
 ```
 
-### `paths.rs`
+### paths.rs
 
 Cross-platform path resolution.
+
+```mermaid
+graph TB
+    subgraph "Path Functions"
+        PLUGINS[plugins_dir]
+        CLAUDE_USER[claude_user_dir]
+        RHINOLABS[rhinolabs_config_dir]
+        CHECK[is_claude_code_installed]
+    end
+
+    subgraph "Platforms"
+        MAC[macOS<br/>~/Library/Application Support/]
+        LINUX[Linux<br/>~/.config/]
+        WIN[Windows<br/>%APPDATA%/]
+    end
+
+    PLUGINS --> MAC
+    PLUGINS --> LINUX
+    PLUGINS --> WIN
+    CLAUDE_USER --> MAC
+    CLAUDE_USER --> LINUX
+    CLAUDE_USER --> WIN
+```
 
 ```rust
 use rhinolabs_core::Paths;
@@ -105,9 +272,31 @@ if Paths::is_claude_code_installed() {
 }
 ```
 
-### `installer.rs`
+### installer.rs
 
 Plugin installation and updates.
+
+```mermaid
+flowchart TB
+    subgraph "Installation Methods"
+        GITHUB[From GitHub Releases]
+        LOCAL[From Local Directory]
+    end
+
+    subgraph "Operations"
+        INSTALL[install]
+        UPDATE[update]
+        UNINSTALL[uninstall]
+    end
+
+    GITHUB --> INSTALL
+    LOCAL --> INSTALL
+    INSTALL --> UPDATE
+    UPDATE --> UNINSTALL
+
+    style GITHUB fill:#38a169,stroke:#68d391,color:#fff
+    style LOCAL fill:#3182ce,stroke:#63b3ed,color:#fff
+```
 
 ```rust
 use rhinolabs_core::Installer;
@@ -128,54 +317,72 @@ installer.update().await?;
 installer.uninstall()?;
 ```
 
-### `settings.rs`
+### settings.rs / instructions.rs / output_styles.rs
 
-Plugin settings management.
+Configuration management.
+
+```mermaid
+graph LR
+    subgraph "Settings"
+        GET_SET[get/set]
+        AUTO_UPDATE[autoUpdate]
+        OUTPUT_STYLE[outputStyle]
+    end
+
+    subgraph "Instructions"
+        GET_INST[get]
+        SET_INST[set]
+        CLAUDE_MD[CLAUDE.md]
+    end
+
+    subgraph "Output Styles"
+        LIST_STYLES[list]
+        GET_ACTIVE[get_active]
+        SET_ACTIVE[set_active]
+    end
+```
 
 ```rust
-use rhinolabs_core::Settings;
+use rhinolabs_core::{Settings, Instructions, OutputStyles};
 
-// Get current settings
+// Settings
 let settings = Settings::get()?;
-
-// Update settings
 Settings::set("autoUpdate", serde_json::json!(true))?;
-```
 
-### `instructions.rs`
-
-CLAUDE.md management.
-
-```rust
-use rhinolabs_core::Instructions;
-
-// Get current instructions
+// Instructions
 let content = Instructions::get()?;
-
-// Set instructions
 Instructions::set("# My Instructions\n...")?;
-```
 
-### `output_styles.rs`
-
-Output style management.
-
-```rust
-use rhinolabs_core::OutputStyles;
-
-// List available styles
+// Output Styles
 let styles = OutputStyles::list()?;
-
-// Get active style
 let active = OutputStyles::get_active()?;
-
-// Set active style
 OutputStyles::set_active("concise")?;
 ```
 
-### `mcp.rs`
+### mcp.rs
 
 MCP server configuration.
+
+```mermaid
+graph TB
+    subgraph "MCP Operations"
+        LIST[list]
+        ADD[add]
+        REMOVE[remove]
+        SYNC_URL[sync_from_url]
+        SYNC_FILE[sync_from_file]
+    end
+
+    subgraph "Storage"
+        MCP_JSON[.mcp.json]
+    end
+
+    LIST --> MCP_JSON
+    ADD --> MCP_JSON
+    REMOVE --> MCP_JSON
+    SYNC_URL --> MCP_JSON
+    SYNC_FILE --> MCP_JSON
+```
 
 ```rust
 use rhinolabs_core::Mcp;
@@ -198,23 +405,30 @@ Mcp::remove("my-server")?;
 Mcp::sync_from_url("https://config.example.com/mcp.json").await?;
 ```
 
-### `project.rs`
-
-GitHub project configuration.
-
-```rust
-use rhinolabs_core::Project;
-
-// Get project config
-let config = Project::get_config()?;
-
-// Set GitHub repository
-Project::set_github("rhinolabs", "rhinolabs-ai")?;
-```
-
 ## Data Types
 
 ### Profile
+
+```mermaid
+classDiagram
+    class Profile {
+        +String id
+        +String name
+        +String description
+        +ProfileType profile_type
+        +Vec~String~ skills
+        +String created_at
+        +String updated_at
+    }
+
+    class ProfileType {
+        <<enumeration>>
+        User
+        Project
+    }
+
+    Profile --> ProfileType
+```
 
 ```rust
 pub struct Profile {
@@ -235,6 +449,28 @@ pub enum ProfileType {
 
 ### Skill
 
+```mermaid
+classDiagram
+    class Skill {
+        +String id
+        +String name
+        +String description
+        +String version
+        +String category
+        +SkillSource source
+        +bool enabled
+    }
+
+    class SkillSource {
+        <<enumeration>>
+        Builtin
+        Remote(String)
+        Custom
+    }
+
+    Skill --> SkillSource
+```
+
 ```rust
 pub struct Skill {
     pub id: String,
@@ -253,29 +489,51 @@ pub enum SkillSource {
 }
 ```
 
-### Installation Results
+### Results
 
-```rust
-pub struct ProfileInstallResult {
-    pub target_path: String,
-    pub skills_installed: Vec<String>,
-    pub skills_failed: Vec<SkillError>,
-    pub instructions_installed: Option<bool>,
-    pub settings_installed: Option<bool>,
-    pub output_style_installed: Option<String>,
-}
+```mermaid
+classDiagram
+    class ProfileInstallResult {
+        +String target_path
+        +Vec~String~ skills_installed
+        +Vec~SkillError~ skills_failed
+        +Option~bool~ instructions_installed
+        +Option~bool~ settings_installed
+        +Option~String~ output_style_installed
+    }
 
-pub struct SyncResult {
-    pub version: String,
-    pub profiles_installed: usize,
-    pub skills_installed: usize,
-    pub instructions_installed: bool,
-    pub settings_installed: bool,
-    pub output_styles_installed: usize,
-}
+    class SyncResult {
+        +String version
+        +usize profiles_installed
+        +usize skills_installed
+        +bool instructions_installed
+        +bool settings_installed
+        +usize output_styles_installed
+    }
+
+    class DeployResult {
+        +String version
+        +String release_url
+        +String asset_url
+        +ConfigManifest manifest
+    }
 ```
 
 ## Configuration Files
+
+```mermaid
+graph TB
+    subgraph "~/.config/rhinolabs-ai/"
+        PROFILES_JSON[profiles.json<br/>Profile definitions]
+        PROJECT_JSON[.project.json<br/>GitHub settings]
+    end
+
+    subgraph "Plugin Directory"
+        SKILLS_CONFIG[.skills-config.json<br/>Skill states]
+        SETTINGS_JSON[settings.json<br/>Plugin settings]
+        MCP_JSON[.mcp.json<br/>MCP configuration]
+    end
+```
 
 | File | Location | Purpose |
 |------|----------|---------|
@@ -307,23 +565,6 @@ rhinolabs-core = { path = "../core" }
 
 ```rust
 use rhinolabs_core::{Profiles, Skills, Deploy};
-```
-
-## Architecture
-
-```
-core/src/
-├── lib.rs              # Public exports
-├── profiles.rs         # Profile management
-├── skills.rs           # Skill management
-├── deploy.rs           # Deploy/sync
-├── paths.rs            # Path resolution
-├── installer.rs        # Plugin installation
-├── settings.rs         # Settings management
-├── instructions.rs     # CLAUDE.md
-├── output_styles.rs    # Output styles
-├── mcp.rs              # MCP servers
-└── project.rs          # GitHub config
 ```
 
 ---

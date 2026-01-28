@@ -4,6 +4,31 @@ Desktop application for managing the Rhinolabs AI plugin and team configuration.
 
 ## Overview
 
+```mermaid
+graph TB
+    subgraph "GUI Application"
+        subgraph "Frontend (React)"
+            PAGES[Pages]
+            COMPONENTS[Components]
+            API[API Layer]
+        end
+
+        subgraph "Backend (Tauri/Rust)"
+            COMMANDS[Tauri Commands]
+            CORE[rhinolabs-core]
+        end
+    end
+
+    PAGES --> API
+    COMPONENTS --> API
+    API -->|invoke| COMMANDS
+    COMMANDS --> CORE
+
+    style PAGES fill:#3182ce,stroke:#63b3ed,color:#fff
+    style COMMANDS fill:#dd6b20,stroke:#ed8936,color:#fff
+    style CORE fill:#4a5568,stroke:#718096,color:#fff
+```
+
 The GUI is designed for **lead developers** who need to:
 
 - Manage skills and profiles
@@ -31,64 +56,163 @@ pnpm install
 pnpm tauri build
 ```
 
+## Application Structure
+
+```mermaid
+graph LR
+    subgraph "Navigation"
+        DASH[Dashboard]
+        SKILLS[Skills]
+        PROFILES[Profiles]
+        MCP[MCP]
+        SETTINGS[Settings]
+        PROJECT[Project]
+    end
+
+    DASH --> SKILLS
+    SKILLS --> PROFILES
+    PROFILES --> MCP
+    MCP --> SETTINGS
+    SETTINGS --> PROJECT
+
+    style DASH fill:#805ad5,stroke:#9f7aea,color:#fff
+    style PROJECT fill:#e53e3e,stroke:#fc8181,color:#fff
+```
+
 ## Features
 
 ### Dashboard
 
 Overview of plugin status and quick actions.
 
-- Installation status
-- Version information
-- Quick access to common actions
+```mermaid
+graph TB
+    subgraph "Dashboard"
+        STATUS[Installation Status]
+        VERSION[Version Info]
+        ACTIONS[Quick Actions]
+    end
 
-### Skills
+    STATUS --> INSTALLED{Installed?}
+    INSTALLED -->|Yes| SHOW_VERSION[Show Version]
+    INSTALLED -->|No| INSTALL_BTN[Install Button]
+```
 
-Manage available skills.
+### Skills Management
+
+```mermaid
+flowchart TB
+    subgraph "Skills Page"
+        LIST[Skills List]
+        FILTER[Category Filter]
+        TOGGLE[Enable/Disable]
+        FETCH[Fetch Remote]
+        DETAILS[View Details]
+    end
+
+    FILTER --> LIST
+    LIST --> TOGGLE
+    LIST --> DETAILS
+    FETCH --> LIST
+```
 
 - Browse built-in and remote skills
 - Enable/disable skills
 - Fetch skills from remote sources
 - View skill details and content
 
-### Profiles
+### Profiles Management
 
-Organize skills into reusable bundles.
+```mermaid
+graph TB
+    subgraph "Profiles Page"
+        subgraph "All Profiles Tab"
+            CREATE[Create Profile]
+            EDIT[Edit Profile]
+            DELETE[Delete Profile]
+            TYPE[Set Type<br/>User/Project]
+        end
 
-**All Profiles Tab:**
-- Create, edit, delete profiles
-- Set profile type (User or Project)
-- View assigned skills count
+        subgraph "Assign Skills Tab"
+            SELECT[Select Profile]
+            CATEGORY[Filter by Category]
+            ASSIGN[Assign Skills]
+            PREVIEW[Preview Description]
+        end
+    end
 
-**Assign Skills Tab:**
-- Select a profile
-- Filter skills by category
-- Assign/unassign skills with checkboxes
-- See skill descriptions
+    CREATE --> EDIT
+    SELECT --> CATEGORY
+    CATEGORY --> ASSIGN
+
+    style SELECT fill:#805ad5,stroke:#9f7aea,color:#fff
+    style ASSIGN fill:#38a169,stroke:#68d391,color:#fff
+```
 
 ### MCP Servers
 
-Configure Model Context Protocol servers.
+```mermaid
+graph TB
+    subgraph "MCP Page"
+        subgraph "Add Server Tab"
+            MANUAL[Manual Configuration]
+            NAME[Server Name]
+            CMD[Command]
+            ARGS[Arguments]
+            ENV[Environment]
+        end
 
-**Add Server Tab:**
-- Add MCP servers manually
-- Configure command, args, environment
+        subgraph "Sync from Source Tab"
+            URL[Remote URL]
+            FILE[Local File]
+            SYNC[Sync Button]
+        end
+    end
 
-**Sync from Source Tab:**
-- Sync from remote URL
-- Sync from local file
-- Centralized MCP configuration
+    MANUAL --> NAME
+    NAME --> CMD
+    CMD --> ARGS
+    ARGS --> ENV
+    URL --> SYNC
+    FILE --> SYNC
+
+    style SYNC fill:#38a169,stroke:#68d391,color:#fff
+```
 
 ### Settings
 
-Configure plugin behavior.
+```mermaid
+graph LR
+    subgraph "Settings Page"
+        AUTO[Auto-Update]
+        STYLE[Output Style]
+        INSTRUCTIONS[CLAUDE.md Editor]
+    end
+```
 
-- Auto-update settings
-- Output style selection
-- CLAUDE.md instructions editor
+### Project & Deploy
 
-### Project
+```mermaid
+sequenceDiagram
+    participant User as Lead Developer
+    participant GUI as GUI App
+    participant Core as rhinolabs-core
+    participant GH as GitHub
 
-GitHub repository configuration and deployment.
+    Note over User,GUI: Configuration
+    User->>GUI: Set GitHub owner/repo
+    GUI->>Core: Save project config
+
+    Note over User,GH: Deploy (GUI-Only)
+    User->>GUI: Click Deploy
+    GUI->>Core: export_config()
+    Core-->>GUI: rhinolabs-config.zip
+    GUI->>Core: deploy(version, changelog)
+    Core->>GH: Create Release
+    Core->>GH: Upload Asset
+    GH-->>GUI: Release URL
+    GUI->>User: Show success
+```
 
 **Settings:**
 - Configure GitHub owner/repo
@@ -101,6 +225,31 @@ GitHub repository configuration and deployment.
 
 ## Tech Stack
 
+```mermaid
+graph TB
+    subgraph "Frontend"
+        REACT[React 18]
+        TS[TypeScript]
+        VITE[Vite]
+        TAILWIND[Tailwind CSS]
+    end
+
+    subgraph "Backend"
+        TAURI[Tauri 2.0]
+        RUST[Rust]
+        CORE[rhinolabs-core]
+    end
+
+    REACT --> TAURI
+    TS --> TAURI
+    TAURI --> RUST
+    RUST --> CORE
+
+    style REACT fill:#61dafb,stroke:#21a1c4,color:#000
+    style TAURI fill:#ffc131,stroke:#d4a017,color:#000
+    style RUST fill:#dea584,stroke:#b7410e,color:#000
+```
+
 | Layer | Technology |
 |-------|------------|
 | Frontend | React 18 + TypeScript |
@@ -109,43 +258,35 @@ GitHub repository configuration and deployment.
 | Styling | Tailwind CSS |
 | Core Logic | rhinolabs-core (shared library) |
 
-## Development
-
-### Prerequisites
-
-- Node.js 18+
-- pnpm
-- Rust 1.70+
-
-### Setup
-
-```bash
-cd gui
-pnpm install
-```
-
-### Development Mode
-
-```bash
-pnpm tauri dev
-```
-
-### Build
-
-```bash
-pnpm tauri build
-```
-
-### Testing
-
-```bash
-# E2E tests
-cd tests
-pnpm install
-pnpm test
-```
-
 ## Project Structure
+
+```mermaid
+graph TB
+    subgraph "gui/"
+        subgraph "src/ (React)"
+            PAGES_DIR[pages/]
+            COMP_DIR[components/]
+            API_FILE[api.ts]
+            TYPES_FILE[types.ts]
+        end
+
+        subgraph "src-tauri/ (Rust)"
+            MAIN_RS[main.rs]
+            COMMANDS_RS[commands.rs]
+            CARGO[Cargo.toml]
+        end
+
+        TESTS[tests/]
+        PKG[package.json]
+    end
+
+    PAGES_DIR --> API_FILE
+    API_FILE --> COMMANDS_RS
+    COMMANDS_RS --> CORE_LIB[rhinolabs-core]
+
+    style PAGES_DIR fill:#3182ce,stroke:#63b3ed,color:#fff
+    style COMMANDS_RS fill:#dd6b20,stroke:#ed8936,color:#fff
+```
 
 ```
 gui/
@@ -175,7 +316,36 @@ gui/
 
 ## Tauri Commands
 
-The GUI communicates with the backend via Tauri commands:
+```mermaid
+graph TB
+    subgraph "Frontend API Calls"
+        INVOKE[invoke&lt;T&gt;]
+    end
+
+    subgraph "Tauri Commands"
+        PROFILES_CMD[Profile Commands]
+        SKILLS_CMD[Skill Commands]
+        DEPLOY_CMD[Deploy Commands]
+        SETTINGS_CMD[Settings Commands]
+    end
+
+    subgraph "Core Functions"
+        PROFILES_FN[Profiles::]
+        SKILLS_FN[Skills::]
+        DEPLOY_FN[Deploy::]
+        SETTINGS_FN[Settings::]
+    end
+
+    INVOKE --> PROFILES_CMD
+    INVOKE --> SKILLS_CMD
+    INVOKE --> DEPLOY_CMD
+    INVOKE --> SETTINGS_CMD
+
+    PROFILES_CMD --> PROFILES_FN
+    SKILLS_CMD --> SKILLS_FN
+    DEPLOY_CMD --> DEPLOY_FN
+    SETTINGS_CMD --> SETTINGS_FN
+```
 
 ### Profiles
 
@@ -221,10 +391,10 @@ await invoke('toggle_skill', { id: 'react-19', enabled: true });
 await invoke('fetch_remote_skills', { source: 'anthropic-official' });
 ```
 
-### Deploy
+### Deploy (GUI-Only)
 
 ```typescript
-// Deploy to GitHub (GUI-only)
+// Deploy to GitHub
 const result = await invoke<DeployResult>('deploy_config', {
   version: '1.0.0',
   changelog: 'Release notes'
@@ -236,15 +406,70 @@ const result = await invoke<ExportResult>('export_config', {
 });
 ```
 
-## Security
+## Security Model
 
-The GUI has exclusive access to **deploy** operations:
+```mermaid
+graph TB
+    subgraph "GUI Exclusive Features"
+        CREATE[Create Profiles]
+        EDIT[Edit Profiles]
+        ASSIGN[Assign Skills]
+        DEPLOY[Deploy to GitHub]
+        EXPORT[Export Config]
+    end
+
+    subgraph "Requirements"
+        TOKEN[GITHUB_TOKEN<br/>with repo write access]
+        REPO[Configured Repository]
+    end
+
+    DEPLOY --> TOKEN
+    DEPLOY --> REPO
+    EXPORT --> TOKEN
+
+    style DEPLOY fill:#e53e3e,stroke:#fc8181,color:#fff
+    style TOKEN fill:#805ad5,stroke:#9f7aea,color:#fff
+```
 
 - Only lead developers with the GUI can publish configuration changes
 - Team developers use CLI for read-only sync
 - Requires `GITHUB_TOKEN` environment variable with repo write access
 
-This separation ensures configuration integrity across the team.
+## Development
+
+### Prerequisites
+
+- Node.js 18+
+- pnpm
+- Rust 1.70+
+
+### Setup
+
+```bash
+cd gui
+pnpm install
+```
+
+### Development Mode
+
+```bash
+pnpm tauri dev
+```
+
+### Build
+
+```bash
+pnpm tauri build
+```
+
+### Testing
+
+```bash
+# E2E tests
+cd tests
+pnpm install
+pnpm test
+```
 
 ## Troubleshooting
 
