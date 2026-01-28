@@ -1,4 +1,4 @@
-use crate::{Result, RhinolabsError, Paths, Version};
+use crate::{Paths, Result, RhinolabsError, Version};
 use std::fs;
 use std::path::Path;
 
@@ -27,7 +27,7 @@ impl Installer {
         if Paths::is_plugin_installed() {
             let plugin_dir = Paths::plugin_dir()?;
             return Err(RhinolabsError::PluginAlreadyInstalled(
-                plugin_dir.display().to_string()
+                plugin_dir.display().to_string(),
             ));
         }
 
@@ -63,7 +63,7 @@ impl Installer {
         if Paths::is_plugin_installed() {
             let plugin_dir = Paths::plugin_dir()?;
             return Err(RhinolabsError::PluginAlreadyInstalled(
-                plugin_dir.display().to_string()
+                plugin_dir.display().to_string(),
             ));
         }
 
@@ -114,9 +114,10 @@ impl Installer {
         let response = reqwest::get(url).await?;
 
         if !response.status().is_success() {
-            return Err(RhinolabsError::DownloadFailed(
-                format!("HTTP {}", response.status())
-            ));
+            return Err(RhinolabsError::DownloadFailed(format!(
+                "HTTP {}",
+                response.status()
+            )));
         }
 
         let bytes = response.bytes().await?;
@@ -212,7 +213,11 @@ mod tests {
         // Create test structure in source
         fs::write(source_dir.path().join("file1.txt"), "content1").unwrap();
         fs::create_dir(source_dir.path().join("subdir")).unwrap();
-        fs::write(source_dir.path().join("subdir").join("file2.txt"), "content2").unwrap();
+        fs::write(
+            source_dir.path().join("subdir").join("file2.txt"),
+            "content2",
+        )
+        .unwrap();
 
         // Create .git directory (should be skipped)
         fs::create_dir(source_dir.path().join(".git")).unwrap();

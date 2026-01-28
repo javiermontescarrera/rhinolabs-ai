@@ -155,25 +155,23 @@ async fn main() -> anyhow::Result<()> {
         Some(Commands::Version) => {
             version::run();
         }
-        Some(Commands::Profile { action }) => {
-            match action {
-                ProfileAction::List => {
-                    profile::list()?;
-                }
-                ProfileAction::Show { profile_id } => {
-                    profile::show(&profile_id)?;
-                }
-                ProfileAction::Install { profile, path } => {
-                    profile::install(&profile, path)?;
-                }
-                ProfileAction::Update { profile, path } => {
-                    profile::update(profile, path)?;
-                }
-                ProfileAction::Uninstall { path } => {
-                    profile::uninstall(path)?;
-                }
+        Some(Commands::Profile { action }) => match action {
+            ProfileAction::List => {
+                profile::list()?;
             }
-        }
+            ProfileAction::Show { profile_id } => {
+                profile::show(&profile_id)?;
+            }
+            ProfileAction::Install { profile, path } => {
+                profile::install(&profile, path)?;
+            }
+            ProfileAction::Update { profile, path } => {
+                profile::update(profile, path)?;
+            }
+            ProfileAction::Uninstall { path } => {
+                profile::uninstall(path)?;
+            }
+        },
         Some(Commands::Sync) => {
             // Manual sync - always runs regardless of session marker
             deploy::sync().await?;

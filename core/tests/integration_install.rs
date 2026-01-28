@@ -17,14 +17,22 @@ fn test_install_check_uninstall_cycle() {
 
     // Verify plugin structure was copied
     assert!(plugin_path.exists());
-    assert!(plugin_path.join(".claude-plugin").join("plugin.json").exists());
-    assert!(plugin_path.join("skills").join("test-skill").join("SKILL.md").exists());
+    assert!(plugin_path
+        .join(".claude-plugin")
+        .join("plugin.json")
+        .exists());
+    assert!(plugin_path
+        .join("skills")
+        .join("test-skill")
+        .join("SKILL.md")
+        .exists());
 
     // Verify .git was NOT copied
     assert!(!plugin_path.join(".git").exists());
 
     // Verify file contents
-    let plugin_json = fs::read_to_string(plugin_path.join(".claude-plugin").join("plugin.json")).unwrap();
+    let plugin_json =
+        fs::read_to_string(plugin_path.join(".claude-plugin").join("plugin.json")).unwrap();
     assert!(plugin_json.contains("rhinolabs-claude"));
 
     // Clean up

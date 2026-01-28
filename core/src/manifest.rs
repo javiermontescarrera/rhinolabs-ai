@@ -34,7 +34,9 @@ pub struct Manifest;
 impl Manifest {
     /// Get the path to plugin.json
     fn manifest_path() -> Result<PathBuf> {
-        Ok(Paths::plugin_dir()?.join(".claude-plugin").join("plugin.json"))
+        Ok(Paths::plugin_dir()?
+            .join(".claude-plugin")
+            .join("plugin.json"))
     }
 
     /// Read the plugin manifest

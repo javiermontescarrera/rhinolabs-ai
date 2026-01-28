@@ -1,7 +1,7 @@
 use crate::ui::Ui;
 use anyhow::Result;
 use colored::Colorize;
-use rhinolabs_core::{Doctor, diagnostics::CheckStatus};
+use rhinolabs_core::{diagnostics::CheckStatus, Doctor};
 
 pub async fn run() -> Result<()> {
     Ui::header("🔍 Running Diagnostics");
@@ -16,16 +16,13 @@ pub async fn run() -> Result<()> {
             CheckStatus::Warning => ("⚠", check.name.yellow()),
         };
 
-        println!("{} {}: {}",
-            icon.bold(),
-            name_colored,
-            check.message
-        );
+        println!("{} {}: {}", icon.bold(), name_colored, check.message);
     }
 
     println!();
     println!("{}", "━".repeat(50).bright_black());
-    println!("{} passed, {} failed, {} warnings",
+    println!(
+        "{} passed, {} failed, {} warnings",
         report.passed.to_string().green(),
         report.failed.to_string().red(),
         report.warnings.to_string().yellow(),

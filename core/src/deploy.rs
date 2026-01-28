@@ -5,7 +5,7 @@
 //! - Publishing configuration to GitHub releases
 //! - Syncing configuration from GitHub releases
 
-use crate::{Paths, Profiles, Result, RhinolabsError, Settings, InstructionsManager};
+use crate::{InstructionsManager, Paths, Profiles, Result, RhinolabsError, Settings};
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File};
 use std::io::{Read, Write};
@@ -62,8 +62,7 @@ impl Deploy {
         let file = File::create(&zip_path)?;
         let mut zip = ZipWriter::new(file);
 
-        let options = FileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated);
+        let options = FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
         let mut skills_count = 0;
         let mut output_styles_count = 0;
@@ -99,7 +98,8 @@ impl Deploy {
         // 5. Export output-styles directory
         let styles_dir = plugin_dir.join("output-styles");
         if styles_dir.exists() {
-            output_styles_count = Self::add_directory_to_zip(&mut zip, &styles_dir, "output-styles", &options)?;
+            output_styles_count =
+                Self::add_directory_to_zip(&mut zip, &styles_dir, "output-styles", &options)?;
         }
 
         // 6. Export .mcp.json if exists
@@ -163,7 +163,10 @@ impl Deploy {
             let name_str = name.to_string_lossy();
 
             // Skip hidden files except specific ones
-            if name_str.starts_with('.') && name_str != ".mcp.json" && name_str != ".skills-config.json" {
+            if name_str.starts_with('.')
+                && name_str != ".mcp.json"
+                && name_str != ".skills-config.json"
+            {
                 continue;
             }
 
@@ -214,9 +217,7 @@ impl Deploy {
         }
 
         let token = std::env::var("GITHUB_TOKEN").map_err(|_| {
-            RhinolabsError::ConfigError(
-                "GITHUB_TOKEN environment variable not set".into(),
-            )
+            RhinolabsError::ConfigError("GITHUB_TOKEN environment variable not set".into())
         })?;
 
         // 1. Export config to temp directory
@@ -272,13 +273,10 @@ impl Deploy {
         }
 
         let release: serde_json::Value = response.json().await?;
-        let release_id = release["id"].as_u64().ok_or_else(|| {
-            RhinolabsError::Other("Failed to get release ID".into())
-        })?;
-        let release_html_url = release["html_url"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let release_id = release["id"]
+            .as_u64()
+            .ok_or_else(|| RhinolabsError::Other("Failed to get release ID".into()))?;
+        let release_html_url = release["html_url"].as_str().unwrap_or("").to_string();
 
         // 3. Upload config zip as release asset
         let upload_url = format!(
@@ -374,9 +372,9 @@ impl Deploy {
         })?;
 
         // Find the config zip asset
-        let assets = release["assets"].as_array().ok_or_else(|| {
-            RhinolabsError::Other("No assets found in release".into())
-        })?;
+        let assets = release["assets"]
+            .as_array()
+            .ok_or_else(|| RhinolabsError::Other("No assets found in release".into()))?;
 
         let config_asset = assets.iter().find(|a| {
             a["name"]
@@ -386,9 +384,7 @@ impl Deploy {
         });
 
         let asset = config_asset.ok_or_else(|| {
-            RhinolabsError::ConfigError(
-                "No config bundle found in release".into(),
-            )
+            RhinolabsError::ConfigError("No config bundle found in release".into())
         })?;
 
         let download_url = asset["browser_download_url"]

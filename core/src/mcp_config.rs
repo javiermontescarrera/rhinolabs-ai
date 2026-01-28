@@ -111,9 +111,10 @@ impl McpConfigManager {
         let mut config = Self::get()?;
 
         if config.mcp_servers.contains_key(name) {
-            return Err(RhinolabsError::ConfigError(
-                format!("MCP server '{}' already exists", name)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "MCP server '{}' already exists",
+                name
+            )));
         }
 
         config.mcp_servers.insert(name.to_string(), server);
@@ -125,9 +126,10 @@ impl McpConfigManager {
         let mut config = Self::get()?;
 
         if !config.mcp_servers.contains_key(name) {
-            return Err(RhinolabsError::ConfigError(
-                format!("MCP server '{}' not found", name)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "MCP server '{}' not found",
+                name
+            )));
         }
 
         config.mcp_servers.insert(name.to_string(), server);
@@ -139,9 +141,10 @@ impl McpConfigManager {
         let mut config = Self::get()?;
 
         if config.mcp_servers.remove(name).is_none() {
-            return Err(RhinolabsError::ConfigError(
-                format!("MCP server '{}' not found", name)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "MCP server '{}' not found",
+                name
+            )));
         }
 
         Self::update(&config)

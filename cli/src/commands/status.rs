@@ -12,7 +12,10 @@ pub fn run() -> Result<()> {
         match Version::installed()? {
             Some(version_info) => {
                 println!("  Version:      {}", version_info.version.green());
-                println!("  Installed at: {}", version_info.installed_at.format("%Y-%m-%d %H:%M:%S UTC"));
+                println!(
+                    "  Installed at: {}",
+                    version_info.installed_at.format("%Y-%m-%d %H:%M:%S UTC")
+                );
             }
             None => {
                 println!("  Version:      {}", "unknown".yellow());

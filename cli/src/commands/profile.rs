@@ -1,7 +1,7 @@
 use crate::ui::Ui;
 use anyhow::Result;
 use colored::Colorize;
-use rhinolabs_core::{Profiles, ProfileType};
+use rhinolabs_core::{ProfileType, Profiles};
 use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
@@ -147,7 +147,11 @@ pub fn install(profile_id: &str, target_path: Option<String>) -> Result<()> {
 
                 let path_display = path.display().to_string();
                 println!();
-                println!("  {} Profile '{}' will be installed as a plugin in:", "→".cyan(), profile.name);
+                println!(
+                    "  {} Profile '{}' will be installed as a plugin in:",
+                    "→".cyan(),
+                    profile.name
+                );
                 println!("    {}", path_display.bold());
                 println!();
                 println!("  This will create:");
@@ -236,19 +240,17 @@ pub fn update(profile_id: Option<String>, target_path: Option<String>) -> Result
     // If no profile specified, detect from installed plugin
     let effective_profile_id = match profile_id {
         Some(id) => id,
-        None => {
-            match detect_installed_profile(&target) {
-                Some((id, name)) => {
-                    Ui::step(&format!("Detected installed profile: {}", name));
-                    id
-                }
-                None => {
-                    Ui::error("No profile installed in this directory.");
-                    Ui::info("Use 'rhinolabs-ai profile install <profile>' to install one first.");
-                    return Ok(());
-                }
+        None => match detect_installed_profile(&target) {
+            Some((id, name)) => {
+                Ui::step(&format!("Detected installed profile: {}", name));
+                id
             }
-        }
+            None => {
+                Ui::error("No profile installed in this directory.");
+                Ui::info("Use 'rhinolabs-ai profile install <profile>' to install one first.");
+                return Ok(());
+            }
+        },
     };
 
     let profile = Profiles::get(&effective_profile_id)?;
@@ -257,7 +259,11 @@ pub fn update(profile_id: Option<String>, target_path: Option<String>) -> Result
         Some(profile) => {
             let path_display = target.display().to_string();
             println!();
-            println!("  {} Profile '{}' will be updated in:", "→".cyan(), profile.name);
+            println!(
+                "  {} Profile '{}' will be updated in:",
+                "→".cyan(),
+                profile.name
+            );
             println!("    {}", path_display.bold());
             println!();
 
@@ -282,8 +288,13 @@ pub fn update(profile_id: Option<String>, target_path: Option<String>) -> Result
             println!();
         }
         None => {
-            Ui::error(&format!("Profile '{}' not found in configuration", effective_profile_id));
-            Ui::info("The installed profile may have been removed. Run 'rhinolabs-ai sync' to update.");
+            Ui::error(&format!(
+                "Profile '{}' not found in configuration",
+                effective_profile_id
+            ));
+            Ui::info(
+                "The installed profile may have been removed. Run 'rhinolabs-ai sync' to update.",
+            );
         }
     }
 
@@ -306,7 +317,11 @@ pub fn uninstall(target_path: Option<String>) -> Result<()> {
 
     println!();
     if let Some((_, profile_name)) = &profile_info {
-        println!("  {} Profile '{}' will be uninstalled from:", "→".cyan(), profile_name.bold());
+        println!(
+            "  {} Profile '{}' will be uninstalled from:",
+            "→".cyan(),
+            profile_name.bold()
+        );
     } else {
         println!("  {} Profile will be uninstalled from:", "→".cyan());
     }

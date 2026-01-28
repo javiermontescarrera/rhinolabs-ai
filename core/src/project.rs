@@ -170,7 +170,9 @@ impl Project {
             .ok()
             .and_then(|o| {
                 if o.status.success() {
-                    String::from_utf8(o.stdout).ok().map(|s| s.trim().to_string())
+                    String::from_utf8(o.stdout)
+                        .ok()
+                        .map(|s| s.trim().to_string())
                 } else {
                     None
                 }
@@ -184,7 +186,9 @@ impl Project {
             .ok()
             .and_then(|o| {
                 if o.status.success() {
-                    String::from_utf8(o.stdout).ok().map(|s| s.trim().to_string())
+                    String::from_utf8(o.stdout)
+                        .ok()
+                        .map(|s| s.trim().to_string())
                 } else {
                     None
                 }
@@ -248,7 +252,11 @@ impl Project {
     }
 
     /// Create a new release
-    pub async fn create_release(version: &str, changelog: &str, prerelease: bool) -> Result<String> {
+    pub async fn create_release(
+        version: &str,
+        changelog: &str,
+        prerelease: bool,
+    ) -> Result<String> {
         let config = Self::get_config()?;
 
         if config.github.owner.is_empty() || config.github.repo.is_empty() {
@@ -259,9 +267,7 @@ impl Project {
 
         // Get GitHub token from environment
         let token = std::env::var("GITHUB_TOKEN").map_err(|_| {
-            RhinolabsError::ConfigError(
-                "GITHUB_TOKEN environment variable not set".into(),
-            )
+            RhinolabsError::ConfigError("GITHUB_TOKEN environment variable not set".into())
         })?;
 
         let url = format!(
@@ -297,10 +303,7 @@ impl Project {
         }
 
         let release: serde_json::Value = response.json().await?;
-        let release_url = release["html_url"]
-            .as_str()
-            .unwrap_or("")
-            .to_string();
+        let release_url = release["html_url"].as_str().unwrap_or("").to_string();
 
         Ok(release_url)
     }

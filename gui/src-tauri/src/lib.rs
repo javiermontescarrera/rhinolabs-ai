@@ -17,7 +17,10 @@ fn setup_dev_mode() {
             let plugin_dir = dir.join("rhinolabs-claude");
             if plugin_dir.exists() && plugin_dir.join("settings.json").exists() {
                 std::env::set_var("RHINOLABS_DEV_PATH", &plugin_dir);
-                eprintln!("[DEV MODE] Using local plugin directory: {}", plugin_dir.display());
+                eprintln!(
+                    "[DEV MODE] Using local plugin directory: {}",
+                    plugin_dir.display()
+                );
                 return;
             }
             if let Some(parent) = dir.parent() {

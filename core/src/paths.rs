@@ -20,7 +20,10 @@ impl Paths {
     pub fn rhinolabs_config_dir() -> Result<PathBuf> {
         // Allow override for testing
         if let Ok(path) = std::env::var("RHINOLABS_CONFIG_PATH") {
-            return Ok(PathBuf::from(path).parent().unwrap_or(Path::new("")).to_path_buf());
+            return Ok(PathBuf::from(path)
+                .parent()
+                .unwrap_or(Path::new(""))
+                .to_path_buf());
         }
 
         let config_dir = dirs::config_dir()
@@ -97,7 +100,11 @@ impl Paths {
             let local_appdata = std::env::var("LOCALAPPDATA").unwrap_or_default();
 
             std::path::Path::new(&format!("{}/Claude Code/Claude Code.exe", program_files)).exists()
-                || std::path::Path::new(&format!("{}/Programs/Claude Code/Claude Code.exe", local_appdata)).exists()
+                || std::path::Path::new(&format!(
+                    "{}/Programs/Claude Code/Claude Code.exe",
+                    local_appdata
+                ))
+                .exists()
         } else {
             // Linux - check if command exists
             which::which("claude").is_ok()
@@ -106,9 +113,7 @@ impl Paths {
 
     /// Check if plugin is installed
     pub fn is_plugin_installed() -> bool {
-        Self::plugin_dir()
-            .map(|p| p.exists())
-            .unwrap_or(false)
+        Self::plugin_dir().map(|p| p.exists()).unwrap_or(false)
     }
 }
 
@@ -123,8 +128,10 @@ mod tests {
         assert!(dir.is_ok());
 
         let path = dir.unwrap();
-        assert!(path.to_str().unwrap().contains("Claude Code") ||
-                path.to_str().unwrap().contains("claude-code"));
+        assert!(
+            path.to_str().unwrap().contains("Claude Code")
+                || path.to_str().unwrap().contains("claude-code")
+        );
     }
 
     #[test]

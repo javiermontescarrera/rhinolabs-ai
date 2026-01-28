@@ -1,4 +1,4 @@
-use crate::{Paths, Version, Result};
+use crate::{Paths, Result, Version};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,9 +49,18 @@ impl Doctor {
         checks.push(Self::check_updates().await);
 
         // Calculate summary
-        let passed = checks.iter().filter(|c| matches!(c.status, CheckStatus::Pass)).count();
-        let failed = checks.iter().filter(|c| matches!(c.status, CheckStatus::Fail)).count();
-        let warnings = checks.iter().filter(|c| matches!(c.status, CheckStatus::Warning)).count();
+        let passed = checks
+            .iter()
+            .filter(|c| matches!(c.status, CheckStatus::Pass))
+            .count();
+        let failed = checks
+            .iter()
+            .filter(|c| matches!(c.status, CheckStatus::Fail))
+            .count();
+        let warnings = checks
+            .iter()
+            .filter(|c| matches!(c.status, CheckStatus::Warning))
+            .count();
 
         Ok(DiagnosticReport {
             checks,
@@ -72,7 +81,8 @@ impl Doctor {
             DiagnosticCheck {
                 name: "Claude Code Installation".into(),
                 status: CheckStatus::Fail,
-                message: "Claude Code not found. Please install from https://code.claude.com".into(),
+                message: "Claude Code not found. Please install from https://code.claude.com"
+                    .into(),
             }
         }
     }
@@ -133,46 +143,36 @@ impl Doctor {
 
     fn check_mcp_config() -> DiagnosticCheck {
         match Paths::mcp_config_path() {
-            Ok(path) if path.exists() => {
-                DiagnosticCheck {
-                    name: "MCP Configuration".into(),
-                    status: CheckStatus::Pass,
-                    message: "MCP config file exists".into(),
-                }
-            }
-            _ => {
-                DiagnosticCheck {
-                    name: "MCP Configuration".into(),
-                    status: CheckStatus::Warning,
-                    message: "MCP config not found. Run: rhinolabs sync-mcp".into(),
-                }
-            }
+            Ok(path) if path.exists() => DiagnosticCheck {
+                name: "MCP Configuration".into(),
+                status: CheckStatus::Pass,
+                message: "MCP config file exists".into(),
+            },
+            _ => DiagnosticCheck {
+                name: "MCP Configuration".into(),
+                status: CheckStatus::Warning,
+                message: "MCP config not found. Run: rhinolabs sync-mcp".into(),
+            },
         }
     }
 
     async fn check_updates() -> DiagnosticCheck {
         match Version::check_update().await {
-            Ok(Some(version)) => {
-                DiagnosticCheck {
-                    name: "Updates".into(),
-                    status: CheckStatus::Warning,
-                    message: format!("New version available: v{}. Run: rhinolabs update", version),
-                }
-            }
-            Ok(None) => {
-                DiagnosticCheck {
-                    name: "Updates".into(),
-                    status: CheckStatus::Pass,
-                    message: "Up to date".into(),
-                }
-            }
-            Err(_) => {
-                DiagnosticCheck {
-                    name: "Updates".into(),
-                    status: CheckStatus::Warning,
-                    message: "Could not check for updates".into(),
-                }
-            }
+            Ok(Some(version)) => DiagnosticCheck {
+                name: "Updates".into(),
+                status: CheckStatus::Warning,
+                message: format!("New version available: v{}. Run: rhinolabs update", version),
+            },
+            Ok(None) => DiagnosticCheck {
+                name: "Updates".into(),
+                status: CheckStatus::Pass,
+                message: "Up to date".into(),
+            },
+            Err(_) => DiagnosticCheck {
+                name: "Updates".into(),
+                status: CheckStatus::Warning,
+                message: "Could not check for updates".into(),
+            },
         }
     }
 }
@@ -236,9 +236,18 @@ mod tests {
             },
         ];
 
-        let passed = checks.iter().filter(|c| matches!(c.status, CheckStatus::Pass)).count();
-        let failed = checks.iter().filter(|c| matches!(c.status, CheckStatus::Fail)).count();
-        let warnings = checks.iter().filter(|c| matches!(c.status, CheckStatus::Warning)).count();
+        let passed = checks
+            .iter()
+            .filter(|c| matches!(c.status, CheckStatus::Pass))
+            .count();
+        let failed = checks
+            .iter()
+            .filter(|c| matches!(c.status, CheckStatus::Fail))
+            .count();
+        let warnings = checks
+            .iter()
+            .filter(|c| matches!(c.status, CheckStatus::Warning))
+            .count();
 
         assert_eq!(passed, 2);
         assert_eq!(failed, 1);
@@ -249,13 +258,11 @@ mod tests {
     #[test]
     fn test_diagnostic_report_structure() {
         let report = DiagnosticReport {
-            checks: vec![
-                DiagnosticCheck {
-                    name: "Test".into(),
-                    status: CheckStatus::Pass,
-                    message: "OK".into(),
-                },
-            ],
+            checks: vec![DiagnosticCheck {
+                name: "Test".into(),
+                status: CheckStatus::Pass,
+                message: "OK".into(),
+            }],
             passed: 1,
             failed: 0,
             warnings: 0,
@@ -274,7 +281,10 @@ mod tests {
         let check = Doctor::check_nodejs();
 
         assert_eq!(check.name, "Node.js");
-        assert!(matches!(check.status, CheckStatus::Pass | CheckStatus::Warning));
+        assert!(matches!(
+            check.status,
+            CheckStatus::Pass | CheckStatus::Warning
+        ));
         assert!(!check.message.is_empty());
     }
 
@@ -285,7 +295,10 @@ mod tests {
         let check = Doctor::check_git();
 
         assert_eq!(check.name, "Git");
-        assert!(matches!(check.status, CheckStatus::Pass | CheckStatus::Warning));
+        assert!(matches!(
+            check.status,
+            CheckStatus::Pass | CheckStatus::Warning
+        ));
         assert!(!check.message.is_empty());
     }
 
@@ -296,7 +309,10 @@ mod tests {
         let check = Doctor::check_claude_code();
 
         assert_eq!(check.name, "Claude Code Installation");
-        assert!(matches!(check.status, CheckStatus::Pass | CheckStatus::Fail));
+        assert!(matches!(
+            check.status,
+            CheckStatus::Pass | CheckStatus::Fail
+        ));
         assert!(!check.message.is_empty());
     }
 
@@ -307,7 +323,10 @@ mod tests {
         let check = Doctor::check_plugin();
 
         assert_eq!(check.name, "Plugin Installation");
-        assert!(matches!(check.status, CheckStatus::Pass | CheckStatus::Fail));
+        assert!(matches!(
+            check.status,
+            CheckStatus::Pass | CheckStatus::Fail
+        ));
         assert!(!check.message.is_empty());
     }
 
@@ -317,7 +336,10 @@ mod tests {
         let check = Doctor::check_mcp_config();
 
         assert_eq!(check.name, "MCP Configuration");
-        assert!(matches!(check.status, CheckStatus::Pass | CheckStatus::Warning));
+        assert!(matches!(
+            check.status,
+            CheckStatus::Pass | CheckStatus::Warning
+        ));
         assert!(!check.message.is_empty());
     }
 }

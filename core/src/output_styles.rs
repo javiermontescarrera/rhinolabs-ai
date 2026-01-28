@@ -1,5 +1,5 @@
-use crate::{Paths, Result, RhinolabsError};
 use crate::settings::Settings;
+use crate::{Paths, Result, RhinolabsError};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -37,14 +37,14 @@ impl OutputStyles {
 
         if !content.starts_with("---") {
             return Err(RhinolabsError::ConfigError(
-                "Output style file must start with YAML frontmatter".into()
+                "Output style file must start with YAML frontmatter".into(),
             ));
         }
 
         let parts: Vec<&str> = content.splitn(3, "---").collect();
         if parts.len() < 3 {
             return Err(RhinolabsError::ConfigError(
-                "Invalid frontmatter format".into()
+                "Invalid frontmatter format".into(),
             ));
         }
 
@@ -65,8 +65,9 @@ impl OutputStyles {
             keep_coding_instructions: style.keep_coding_instructions,
         };
 
-        let yaml = serde_yaml::to_string(&frontmatter)
-            .map_err(|e| RhinolabsError::ConfigError(format!("Failed to serialize frontmatter: {}", e)))?;
+        let yaml = serde_yaml::to_string(&frontmatter).map_err(|e| {
+            RhinolabsError::ConfigError(format!("Failed to serialize frontmatter: {}", e))
+        })?;
 
         Ok(format!("---\n{}---\n\n{}", yaml, style.content))
     }
@@ -152,13 +153,16 @@ impl OutputStyles {
 
         // Find style by name (case-insensitive)
         let styles = Self::list()?;
-        Ok(styles.into_iter().find(|s| s.name.to_lowercase() == active_name))
+        Ok(styles
+            .into_iter()
+            .find(|s| s.name.to_lowercase() == active_name))
     }
 
     /// Set the active output style by id
     pub fn set_active(id: &str) -> Result<()> {
-        let style = Self::get(id)?
-            .ok_or_else(|| RhinolabsError::ConfigError(format!("Output style '{}' not found", id)))?;
+        let style = Self::get(id)?.ok_or_else(|| {
+            RhinolabsError::ConfigError(format!("Output style '{}' not found", id))
+        })?;
 
         let mut settings = Settings::get()?;
         settings.output_style = style.name;
@@ -166,14 +170,20 @@ impl OutputStyles {
     }
 
     /// Create a new output style
-    pub fn create(name: &str, description: &str, keep_coding_instructions: bool, content: &str) -> Result<OutputStyle> {
+    pub fn create(
+        name: &str,
+        description: &str,
+        keep_coding_instructions: bool,
+        content: &str,
+    ) -> Result<OutputStyle> {
         let id = name.to_lowercase().replace(' ', "-");
         let path = Self::styles_dir()?.join(Self::id_to_filename(&id));
 
         if path.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Output style '{}' already exists", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Output style '{}' already exists",
+                id
+            )));
         }
 
         // Ensure directory exists
@@ -197,9 +207,16 @@ impl OutputStyles {
     }
 
     /// Update an existing output style
-    pub fn update(id: &str, name: Option<&str>, description: Option<&str>, keep_coding_instructions: Option<bool>, content: Option<&str>) -> Result<()> {
-        let mut style = Self::get(id)?
-            .ok_or_else(|| RhinolabsError::ConfigError(format!("Output style '{}' not found", id)))?;
+    pub fn update(
+        id: &str,
+        name: Option<&str>,
+        description: Option<&str>,
+        keep_coding_instructions: Option<bool>,
+        content: Option<&str>,
+    ) -> Result<()> {
+        let mut style = Self::get(id)?.ok_or_else(|| {
+            RhinolabsError::ConfigError(format!("Output style '{}' not found", id))
+        })?;
 
         if let Some(n) = name {
             style.name = n.to_string();
@@ -226,9 +243,10 @@ impl OutputStyles {
         let path = Self::styles_dir()?.join(Self::id_to_filename(id));
 
         if !path.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Output style '{}' not found", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Output style '{}' not found",
+                id
+            )));
         }
 
         fs::remove_file(&path)?;
@@ -240,7 +258,7 @@ impl OutputStyles {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{ENV_MUTEX, TestEnv as BaseTestEnv};
+    use crate::test_utils::{TestEnv as BaseTestEnv, ENV_MUTEX};
 
     /// Extended test environment with output-styles-specific helpers
     struct TestEnv {
@@ -267,7 +285,14 @@ mod tests {
             fs::create_dir_all(self.styles_dir()).expect("Failed to create styles dir");
         }
 
-        fn create_style(&self, id: &str, name: &str, description: &str, keep_coding: bool, content: &str) {
+        fn create_style(
+            &self,
+            id: &str,
+            name: &str,
+            description: &str,
+            keep_coding: bool,
+            content: &str,
+        ) {
             let style = OutputStyle {
                 id: id.to_string(),
                 name: name.to_string(),
@@ -493,8 +518,9 @@ description: No keep-coding field
             "New Style",
             "A brand new style",
             true,
-            "# New Style Content"
-        ).expect("Should create");
+            "# New Style Content",
+        )
+        .expect("Should create");
 
         assert_eq!(style.id, "new-style");
         assert_eq!(style.name, "New Style");
@@ -537,12 +563,8 @@ description: No keep-coding field
         let env = TestEnv::new();
         env.setup_styles_dir();
 
-        let style = OutputStyles::create(
-            "My Awesome Style",
-            "Description",
-            false,
-            "# Content"
-        ).expect("Should create");
+        let style = OutputStyles::create("My Awesome Style", "Description", false, "# Content")
+            .expect("Should create");
 
         assert_eq!(style.id, "my-awesome-style");
     }
@@ -570,7 +592,13 @@ description: No keep-coding field
         let _lock = ENV_MUTEX.lock().unwrap();
         let env = TestEnv::new();
         env.setup_styles_dir();
-        env.create_style("updatable", "Name", "Original Description", false, "# Content");
+        env.create_style(
+            "updatable",
+            "Name",
+            "Original Description",
+            false,
+            "# Content",
+        );
 
         OutputStyles::update("updatable", None, Some("New Description"), None, None)
             .expect("Should update");
@@ -586,8 +614,7 @@ description: No keep-coding field
         env.setup_styles_dir();
         env.create_style("updatable", "Name", "Desc", false, "# Content");
 
-        OutputStyles::update("updatable", None, None, Some(true), None)
-            .expect("Should update");
+        OutputStyles::update("updatable", None, None, Some(true), None).expect("Should update");
 
         let style = OutputStyles::get("updatable").expect("Should get").unwrap();
         assert!(style.keep_coding_instructions);
@@ -630,8 +657,9 @@ description: No keep-coding field
             Some("New Name"),
             Some("New Desc"),
             Some(true),
-            Some("# New Content")
-        ).expect("Should update");
+            Some("# New Content"),
+        )
+        .expect("Should update");
 
         let style = OutputStyles::get("updatable").expect("Should get").unwrap();
         assert_eq!(style.name, "New Name");
@@ -649,7 +677,13 @@ description: No keep-coding field
         let _lock = ENV_MUTEX.lock().unwrap();
         let env = TestEnv::new();
         env.setup_styles_dir();
-        env.create_style("deletable", "Deletable", "To be deleted", false, "# Content");
+        env.create_style(
+            "deletable",
+            "Deletable",
+            "To be deleted",
+            false,
+            "# Content",
+        );
 
         // Verify it exists
         let style = OutputStyles::get("deletable").expect("Should get");
@@ -703,8 +737,9 @@ description: No keep-coding field
             "Roundtrip Test",
             "Testing roundtrip",
             true,
-            "# Roundtrip Content\n\nWith multiple lines."
-        ).expect("Should create");
+            "# Roundtrip Content\n\nWith multiple lines.",
+        )
+        .expect("Should create");
 
         let retrieved = OutputStyles::get(&original.id)
             .expect("Should get")
@@ -713,7 +748,10 @@ description: No keep-coding field
         assert_eq!(retrieved.id, original.id);
         assert_eq!(retrieved.name, original.name);
         assert_eq!(retrieved.description, original.description);
-        assert_eq!(retrieved.keep_coding_instructions, original.keep_coding_instructions);
+        assert_eq!(
+            retrieved.keep_coding_instructions,
+            original.keep_coding_instructions
+        );
         assert_eq!(retrieved.content, original.content);
     }
 }

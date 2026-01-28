@@ -20,19 +20,47 @@ pub async fn sync() -> Result<()> {
             println!();
 
             Ui::section("Installed");
-            println!("  {} Profiles:      {}", "✓".green(), result.profiles_installed);
-            println!("  {} Skills:        {}", "✓".green(), result.skills_installed);
+            println!(
+                "  {} Profiles:      {}",
+                "✓".green(),
+                result.profiles_installed
+            );
+            println!(
+                "  {} Skills:        {}",
+                "✓".green(),
+                result.skills_installed
+            );
             println!(
                 "  {} Instructions:  {}",
-                if result.instructions_installed { "✓".green() } else { "○".dimmed() },
-                if result.instructions_installed { "Updated" } else { "Skipped" }
+                if result.instructions_installed {
+                    "✓".green()
+                } else {
+                    "○".dimmed()
+                },
+                if result.instructions_installed {
+                    "Updated"
+                } else {
+                    "Skipped"
+                }
             );
             println!(
                 "  {} Settings:      {}",
-                if result.settings_installed { "✓".green() } else { "○".dimmed() },
-                if result.settings_installed { "Updated" } else { "Skipped" }
+                if result.settings_installed {
+                    "✓".green()
+                } else {
+                    "○".dimmed()
+                },
+                if result.settings_installed {
+                    "Updated"
+                } else {
+                    "Skipped"
+                }
             );
-            println!("  {} Output Styles: {}", "✓".green(), result.output_styles_installed);
+            println!(
+                "  {} Output Styles: {}",
+                "✓".green(),
+                result.output_styles_installed
+            );
             println!();
 
             Ui::info("Restart Claude Code to apply changes.");

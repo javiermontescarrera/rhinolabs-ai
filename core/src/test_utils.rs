@@ -1,3 +1,5 @@
+#[cfg(test)]
+use std::path::PathBuf;
 /// Test utilities for managing the test environment
 ///
 /// Since multiple modules use the RHINOLABS_DEV_PATH environment variable,
@@ -6,8 +8,6 @@
 
 #[cfg(test)]
 use std::sync::Mutex;
-#[cfg(test)]
-use std::path::PathBuf;
 #[cfg(test)]
 use tempfile::TempDir;
 

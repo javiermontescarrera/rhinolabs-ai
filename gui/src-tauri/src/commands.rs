@@ -1,16 +1,13 @@
-use rhinolabs_core::{
-    Installer, Updater, McpSync, Paths, Version, Doctor,
-    Manifest, PluginManifest,
-    Settings, PluginSettings, PermissionConfig, StatusLineConfig,
-    OutputStyles, OutputStyle,
-    Skills, Skill, CreateSkillInput, UpdateSkillInput, SkillSource, SkillSourceType, SkillSchema, RemoteSkill, RemoteSkillFile,
-    InstructionsManager, Instructions,
-    McpConfigManager, McpConfig, McpServer, McpSettings,
-    Project, ProjectConfig, ProjectStatus,
-    Profiles, Profile, CreateProfileInput, UpdateProfileInput, AutoInvokeRule, ProfileInstallResult,
-    Deploy, ConfigManifest, DeployResult, SyncResult,
-};
 use rhinolabs_core::diagnostics::DiagnosticReport;
+use rhinolabs_core::{
+    AutoInvokeRule, ConfigManifest, CreateProfileInput, CreateSkillInput, Deploy, DeployResult,
+    Doctor, Installer, Instructions, InstructionsManager, Manifest, McpConfig, McpConfigManager,
+    McpServer, McpSettings, McpSync, OutputStyle, OutputStyles, Paths, PermissionConfig,
+    PluginManifest, PluginSettings, Profile, ProfileInstallResult, Profiles, Project,
+    ProjectConfig, ProjectStatus, RemoteSkill, RemoteSkillFile, Settings, Skill, SkillSchema,
+    SkillSource, SkillSourceType, Skills, StatusLineConfig, SyncResult, UpdateProfileInput,
+    UpdateSkillInput, Updater, Version,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -261,7 +258,8 @@ pub fn create_output_style(style: CreateOutputStyleInput) -> Result<OutputStyle,
         &style.description,
         style.keep_coding_instructions,
         &style.content,
-    ).map_err(|e| e.to_string())
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[derive(Deserialize)]
@@ -281,7 +279,8 @@ pub fn update_output_style(id: String, style: UpdateOutputStyleInput) -> Result<
         style.description.as_deref(),
         style.keep_coding_instructions,
         style.content.as_deref(),
-    ).map_err(|e| e.to_string())
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -389,7 +388,8 @@ pub fn update_skill_source(
         "standard" => SkillSchema::Standard,
         _ => SkillSchema::Custom,
     });
-    Skills::update_source(&id, enabled, name, url, description, fetchable, schema).map_err(|e| e.to_string())
+    Skills::update_source(&id, enabled, name, url, description, fetchable, schema)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -413,7 +413,8 @@ pub fn install_skill_from_source(input: InstallSkillFromSourceInput) -> Result<S
         &input.skill_content,
         &input.source_id,
         &input.source_name,
-    ).map_err(|e| e.to_string())
+    )
+    .map_err(|e| e.to_string())
 }
 
 #[derive(Deserialize)]
@@ -426,13 +427,17 @@ pub struct InstallSkillFromRemoteInput {
 }
 
 #[tauri::command]
-pub async fn install_skill_from_remote(input: InstallSkillFromRemoteInput) -> Result<Skill, String> {
+pub async fn install_skill_from_remote(
+    input: InstallSkillFromRemoteInput,
+) -> Result<Skill, String> {
     Skills::install_from_remote(
         &input.source_url,
         &input.skill_id,
         &input.source_id,
         &input.source_name,
-    ).await.map_err(|e| e.to_string())
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -449,12 +454,16 @@ pub async fn fetch_remote_skills(source_id: String) -> Result<Vec<RemoteSkill>, 
         .find(|s| s.id == source_id)
         .ok_or_else(|| format!("Source '{}' not found", source_id))?;
 
-    Skills::fetch_from_github(&source).await.map_err(|e| e.to_string())
+    Skills::fetch_from_github(&source)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn fetch_skill_content(url: String) -> Result<String, String> {
-    Skills::fetch_skill_by_url(&url).await.map_err(|e| e.to_string())
+    Skills::fetch_skill_by_url(&url)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[derive(Deserialize)]
@@ -465,8 +474,12 @@ pub struct FetchRemoteSkillFilesInput {
 }
 
 #[tauri::command]
-pub async fn fetch_remote_skill_files(input: FetchRemoteSkillFilesInput) -> Result<Vec<RemoteSkillFile>, String> {
-    Skills::fetch_remote_skill_files(&input.source_url, &input.skill_id).await.map_err(|e| e.to_string())
+pub async fn fetch_remote_skill_files(
+    input: FetchRemoteSkillFilesInput,
+) -> Result<Vec<RemoteSkillFile>, String> {
+    Skills::fetch_remote_skill_files(&input.source_url, &input.skill_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ============================================
@@ -504,7 +517,9 @@ pub fn get_project_status() -> Result<ProjectStatus, String> {
 
 #[tauri::command]
 pub async fn fetch_latest_release() -> Result<Option<String>, String> {
-    Project::fetch_latest_release().await.map_err(|e| e.to_string())
+    Project::fetch_latest_release()
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -513,8 +528,14 @@ pub fn bump_version(bump_type: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub async fn create_release(version: String, changelog: String, prerelease: bool) -> Result<String, String> {
-    Project::create_release(&version, &changelog, prerelease).await.map_err(|e| e.to_string())
+pub async fn create_release(
+    version: String,
+    changelog: String,
+    prerelease: bool,
+) -> Result<String, String> {
+    Project::create_release(&version, &changelog, prerelease)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 // ============================================
@@ -610,7 +631,10 @@ pub fn update_profile_instructions(profile_id: String, content: String) -> Resul
 }
 
 #[tauri::command]
-pub fn open_profile_instructions_in_ide(profile_id: String, ide_command: String) -> Result<(), String> {
+pub fn open_profile_instructions_in_ide(
+    profile_id: String,
+    ide_command: String,
+) -> Result<(), String> {
     // Ensure file exists with current content
     let path = Profiles::ensure_instructions_file(&profile_id).map_err(|e| e.to_string())?;
 
@@ -644,7 +668,11 @@ pub fn get_skill_files(skill_id: String) -> Result<Vec<SkillFile>, String> {
     Ok(files)
 }
 
-fn collect_skill_files(base_path: &PathBuf, current_path: &PathBuf, files: &mut Vec<SkillFile>) -> std::io::Result<()> {
+fn collect_skill_files(
+    base_path: &PathBuf,
+    current_path: &PathBuf,
+    files: &mut Vec<SkillFile>,
+) -> std::io::Result<()> {
     if current_path.is_dir() {
         for entry in std::fs::read_dir(current_path)? {
             let entry = entry?;
@@ -730,7 +758,10 @@ pub fn delete_profile(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn assign_skills_to_profile(profile_id: String, skill_ids: Vec<String>) -> Result<Profile, String> {
+pub fn assign_skills_to_profile(
+    profile_id: String,
+    skill_ids: Vec<String>,
+) -> Result<Profile, String> {
     Profiles::assign_skills(&profile_id, skill_ids).map_err(|e| e.to_string())
 }
 
@@ -755,13 +786,19 @@ pub fn set_default_user_profile(profile_id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn install_profile(profile_id: String, target_path: Option<String>) -> Result<ProfileInstallResult, String> {
+pub fn install_profile(
+    profile_id: String,
+    target_path: Option<String>,
+) -> Result<ProfileInstallResult, String> {
     let path = target_path.as_deref().map(std::path::Path::new);
     Profiles::install(&profile_id, path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn update_installed_profile(profile_id: String, target_path: Option<String>) -> Result<ProfileInstallResult, String> {
+pub fn update_installed_profile(
+    profile_id: String,
+    target_path: Option<String>,
+) -> Result<ProfileInstallResult, String> {
     let path = target_path.as_deref().map(std::path::Path::new);
     Profiles::update_installed(&profile_id, path).map_err(|e| e.to_string())
 }
@@ -777,7 +814,10 @@ pub fn get_auto_invoke_rules(profile_id: String) -> Result<Vec<AutoInvokeRule>, 
 }
 
 #[tauri::command]
-pub fn update_auto_invoke_rules(profile_id: String, rules: Vec<AutoInvokeRule>) -> Result<Profile, String> {
+pub fn update_auto_invoke_rules(
+    profile_id: String,
+    rules: Vec<AutoInvokeRule>,
+) -> Result<Profile, String> {
     Profiles::update_auto_invoke_rules(&profile_id, rules).map_err(|e| e.to_string())
 }
 
@@ -787,8 +827,8 @@ pub fn update_auto_invoke_rules(profile_id: String, rules: Vec<AutoInvokeRule>) 
 
 #[tauri::command]
 pub fn export_config(output_path: String) -> Result<(String, ConfigManifest), String> {
-    let (path, manifest) = Deploy::export_config(std::path::Path::new(&output_path))
-        .map_err(|e| e.to_string())?;
+    let (path, manifest) =
+        Deploy::export_config(std::path::Path::new(&output_path)).map_err(|e| e.to_string())?;
     Ok((path.display().to_string(), manifest))
 }
 
@@ -801,7 +841,5 @@ pub async fn deploy_config(version: String, changelog: String) -> Result<DeployR
 
 #[tauri::command]
 pub async fn sync_config() -> Result<SyncResult, String> {
-    Deploy::sync()
-        .await
-        .map_err(|e| e.to_string())
+    Deploy::sync().await.map_err(|e| e.to_string())
 }

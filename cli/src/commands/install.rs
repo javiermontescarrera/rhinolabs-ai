@@ -35,7 +35,7 @@ pub async fn run(local_path: Option<String>, dry_run: bool) -> Result<()> {
         pb.set_style(
             ProgressStyle::default_spinner()
                 .template("{spinner:.cyan} {msg}")
-                .unwrap()
+                .unwrap(),
         );
         pb.set_message("Downloading from GitHub releases...");
         pb.enable_steady_tick(std::time::Duration::from_millis(100));

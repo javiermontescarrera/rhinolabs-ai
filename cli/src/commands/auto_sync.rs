@@ -7,7 +7,7 @@
 
 use anyhow::Result;
 use colored::Colorize;
-use rhinolabs_core::{Deploy, Profiles, ProfileType};
+use rhinolabs_core::{Deploy, ProfileType, Profiles};
 use std::fs;
 use std::io::{self, Write};
 use std::path::PathBuf;
@@ -106,7 +106,11 @@ pub async fn run_auto_sync() -> Result<bool> {
     // Try to sync
     match Deploy::sync().await {
         Ok(result) => {
-            println!("{} Configuration synced: {}", "✓".green(), result.version.cyan());
+            println!(
+                "{} Configuration synced: {}",
+                "✓".green(),
+                result.version.cyan()
+            );
             println!();
 
             if result.profiles_installed > 0 {
@@ -122,7 +126,11 @@ pub async fn run_auto_sync() -> Result<bool> {
                 println!("  {} Settings", "✓".green());
             }
             if result.output_styles_installed > 0 {
-                println!("  {} {} output styles", "✓".green(), result.output_styles_installed);
+                println!(
+                    "  {} {} output styles",
+                    "✓".green(),
+                    result.output_styles_installed
+                );
             }
 
             // Mark as synced
@@ -148,7 +156,10 @@ pub async fn run_auto_sync() -> Result<bool> {
                 mark_synced("unconfigured");
             } else {
                 println!("{} Sync failed: {}", "⚠".yellow(), error_msg);
-                println!("  {}", "Continuing without sync. Run 'rhinolabs-ai sync' manually later.".dimmed());
+                println!(
+                    "  {}",
+                    "Continuing without sync. Run 'rhinolabs-ai sync' manually later.".dimmed()
+                );
             }
 
             println!("{}", "━━━━━━━━━━━━━━━━━━━━━━━━━━".cyan());
@@ -163,7 +174,9 @@ pub async fn run_auto_sync() -> Result<bool> {
 async fn check_and_install_main_profile() -> Result<()> {
     // Check if Main-Profile exists in profiles
     let profiles = Profiles::list()?;
-    let main_profile = profiles.iter().find(|p| p.id == "main" && p.profile_type == ProfileType::User);
+    let main_profile = profiles
+        .iter()
+        .find(|p| p.id == "main" && p.profile_type == ProfileType::User);
 
     if main_profile.is_none() {
         // No Main-Profile defined, skip
@@ -205,7 +218,10 @@ async fn check_and_install_main_profile() -> Result<()> {
             }
             Err(e) => {
                 println!("{} Failed to install Main-Profile: {}", "✗".red(), e);
-                println!("  {}", "Run 'rhinolabs-ai profile install --profile main' manually.".dimmed());
+                println!(
+                    "  {}",
+                    "Run 'rhinolabs-ai profile install --profile main' manually.".dimmed()
+                );
             }
         }
     } else {

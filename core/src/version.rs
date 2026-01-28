@@ -86,7 +86,9 @@ impl Version {
             .await?;
 
         if !response.status().is_success() {
-            return Err(RhinolabsError::DownloadFailed("Could not fetch release info".into()));
+            return Err(RhinolabsError::DownloadFailed(
+                "Could not fetch release info".into(),
+            ));
         }
 
         let release: serde_json::Value = response.json().await?;
@@ -105,7 +107,9 @@ impl Version {
             }
         }
 
-        Err(RhinolabsError::DownloadFailed("Plugin asset not found in release".into()))
+        Err(RhinolabsError::DownloadFailed(
+            "Plugin asset not found in release".into(),
+        ))
     }
 }
 
@@ -185,13 +189,16 @@ mod tests {
         // Test asset finding
         let assets = release["assets"].as_array().unwrap();
         let plugin_asset = assets.iter().find(|a| {
-            a["name"].as_str()
+            a["name"]
+                .as_str()
                 .map(|n| n.starts_with("rhinolabs-claude") && n.ends_with(".zip"))
                 .unwrap_or(false)
         });
 
         assert!(plugin_asset.is_some());
-        let download_url = plugin_asset.unwrap()["browser_download_url"].as_str().unwrap();
+        let download_url = plugin_asset.unwrap()["browser_download_url"]
+            .as_str()
+            .unwrap();
         assert!(download_url.contains("rhinolabs-claude.zip"));
     }
 
@@ -226,7 +233,8 @@ mod tests {
         let assets = release["assets"].as_array().unwrap();
 
         let plugin_asset = assets.iter().find(|a| {
-            a["name"].as_str()
+            a["name"]
+                .as_str()
                 .map(|n| n.starts_with("rhinolabs-claude") && n.ends_with(".zip"))
                 .unwrap_or(false)
         });

@@ -1,5 +1,5 @@
 use crate::ui::Ui;
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use rhinolabs_core::McpSync;
 
 pub async fn run(url: Option<String>, file: Option<String>, dry_run: bool) -> Result<()> {

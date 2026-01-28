@@ -1,4 +1,4 @@
-use crate::{Result, RhinolabsError, Paths, Version, Installer};
+use crate::{Installer, Paths, Result, RhinolabsError, Version};
 
 pub struct Updater {
     dry_run: bool,
@@ -26,12 +26,15 @@ impl Updater {
 
         if latest_version.is_none() {
             return Err(RhinolabsError::UpdateFailed(
-                "Already on latest version".into()
+                "Already on latest version".into(),
             ));
         }
 
         if self.dry_run {
-            println!("[DRY RUN] Would update to version: {}", latest_version.unwrap());
+            println!(
+                "[DRY RUN] Would update to version: {}",
+                latest_version.unwrap()
+            );
             return Ok(());
         }
 
@@ -51,7 +54,8 @@ impl Updater {
     /// Backup current installation
     fn backup_current(&self) -> Result<()> {
         let plugin_dir = Paths::plugin_dir()?;
-        let backup_dir = plugin_dir.parent()
+        let backup_dir = plugin_dir
+            .parent()
             .ok_or_else(|| RhinolabsError::Other("Invalid plugin path".into()))?
             .join(format!(
                 "rhinolabs-claude.backup.{}",

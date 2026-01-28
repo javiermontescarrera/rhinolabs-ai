@@ -1,4 +1,4 @@
-use crate::{Result, RhinolabsError, Paths};
+use crate::{Paths, Result, RhinolabsError};
 use serde_json::Value;
 use std::fs;
 
@@ -69,9 +69,10 @@ impl McpSync {
         let response = reqwest::get(url).await?;
 
         if !response.status().is_success() {
-            return Err(RhinolabsError::McpSyncFailed(
-                format!("HTTP {}", response.status())
-            ));
+            return Err(RhinolabsError::McpSyncFailed(format!(
+                "HTTP {}",
+                response.status()
+            )));
         }
 
         let text = response.text().await?;
@@ -89,7 +90,8 @@ impl McpSync {
         let config_path = Paths::mcp_config_path()?;
 
         if config_path.exists() {
-            let backup_path = config_path.parent()
+            let backup_path = config_path
+                .parent()
                 .ok_or_else(|| RhinolabsError::Other("Invalid config path".into()))?
                 .join(format!(
                     ".mcp.json.backup.{}",
@@ -150,8 +152,8 @@ mod tests {
             }
         }"#;
 
-        let parsed: Result<Value> = serde_json::from_str(valid_json)
-            .map_err(|e| RhinolabsError::Other(e.to_string()));
+        let parsed: Result<Value> =
+            serde_json::from_str(valid_json).map_err(|e| RhinolabsError::Other(e.to_string()));
 
         assert!(parsed.is_ok());
     }
@@ -167,8 +169,8 @@ mod tests {
             }
         }"#; // Missing closing bracket
 
-        let parsed: Result<Value> = serde_json::from_str(invalid_json)
-            .map_err(|e| RhinolabsError::Other(e.to_string()));
+        let parsed: Result<Value> =
+            serde_json::from_str(invalid_json).map_err(|e| RhinolabsError::Other(e.to_string()));
 
         assert!(parsed.is_err());
     }
@@ -188,8 +190,7 @@ mod tests {
 
         fs::write(&config_file, test_config).unwrap();
 
-        let _sync = McpSync::from_local(config_file.to_str().unwrap().to_string())
-            .dry_run(true);
+        let _sync = McpSync::from_local(config_file.to_str().unwrap().to_string()).dry_run(true);
 
         // Dry run should not fail for JSON validation
         // Note: Will still fail if plugin not installed, but that's expected

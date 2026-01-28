@@ -48,10 +48,7 @@ impl Default for PermissionConfig {
                 "Read(.env.*)".into(),
                 "Read(**/secrets/**)".into(),
             ],
-            ask: vec![
-                "Bash(git commit:*)".into(),
-                "Bash(git push:*)".into(),
-            ],
+            ask: vec!["Bash(git commit:*)".into(), "Bash(git push:*)".into()],
             allow: vec![
                 "Read".into(),
                 "Edit".into(),
@@ -155,9 +152,12 @@ impl Settings {
             "deny" => &mut settings.permissions.deny,
             "ask" => &mut settings.permissions.ask,
             "allow" => &mut settings.permissions.allow,
-            _ => return Err(RhinolabsError::ConfigError(
-                format!("Invalid permission type: {}", permission_type)
-            )),
+            _ => {
+                return Err(RhinolabsError::ConfigError(format!(
+                    "Invalid permission type: {}",
+                    permission_type
+                )))
+            }
         };
 
         if !list.contains(&permission.to_string()) {
@@ -175,9 +175,12 @@ impl Settings {
             "deny" => &mut settings.permissions.deny,
             "ask" => &mut settings.permissions.ask,
             "allow" => &mut settings.permissions.allow,
-            _ => return Err(RhinolabsError::ConfigError(
-                format!("Invalid permission type: {}", permission_type)
-            )),
+            _ => {
+                return Err(RhinolabsError::ConfigError(format!(
+                    "Invalid permission type: {}",
+                    permission_type
+                )))
+            }
         };
 
         list.retain(|p| p != permission);
@@ -249,7 +252,10 @@ mod tests {
         let deserialized: PluginSettings = serde_json::from_str(&json).unwrap();
 
         assert_eq!(deserialized.output_style, settings.output_style);
-        assert_eq!(deserialized.permissions.deny.len(), settings.permissions.deny.len());
+        assert_eq!(
+            deserialized.permissions.deny.len(),
+            settings.permissions.deny.len()
+        );
     }
 
     #[test]

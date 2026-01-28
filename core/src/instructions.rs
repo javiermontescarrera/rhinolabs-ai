@@ -65,7 +65,7 @@ impl InstructionsManager {
 
         if content.trim().is_empty() {
             return Err(RhinolabsError::ConfigError(
-                "Instructions content cannot be empty".into()
+                "Instructions content cannot be empty".into(),
             ));
         }
 
@@ -78,7 +78,7 @@ impl InstructionsManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{ENV_MUTEX, TestEnv as BaseTestEnv};
+    use crate::test_utils::{TestEnv as BaseTestEnv, ENV_MUTEX};
 
     /// Extended test environment with instructions-specific helpers
     struct TestEnv {

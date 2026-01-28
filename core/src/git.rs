@@ -8,7 +8,9 @@ impl GitOperations {
     /// Clone repository to temporary directory
     pub fn clone_temp(url: &str) -> Result<String> {
         let temp_dir = tempfile::tempdir()?;
-        let path = temp_dir.path().to_str()
+        let path = temp_dir
+            .path()
+            .to_str()
             .ok_or_else(|| RhinolabsError::Other("Invalid temp path".into()))?;
 
         Repository::clone(url, path)?;
