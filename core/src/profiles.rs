@@ -1279,6 +1279,10 @@ mod tests {
             name: "Test Profile".to_string(),
             description: "A test profile".to_string(),
             profile_type: ProfileType::Project,
+            skills: vec!["skill-a".to_string()],
+            instructions: None,
+            generate_copilot: true,
+            generate_agents: false,
         };
 
         // Note: This test would need proper config path override mechanism
@@ -1289,7 +1293,11 @@ mod tests {
             name: input.name.clone(),
             description: input.description.clone(),
             profile_type: input.profile_type.clone(),
-            skills: Vec::new(),
+            skills: input.skills.clone(),
+            auto_invoke_rules: Vec::new(),
+            instructions: Some("# Test Instructions".to_string()),
+            generate_copilot: input.generate_copilot,
+            generate_agents: input.generate_agents,
             created_at: now.clone(),
             updated_at: now,
         };
@@ -1297,7 +1305,10 @@ mod tests {
         assert_eq!(profile.id, "test-profile");
         assert_eq!(profile.name, "Test Profile");
         assert_eq!(profile.profile_type, ProfileType::Project);
-        assert!(profile.skills.is_empty());
+        assert_eq!(profile.skills.len(), 1);
+        assert!(profile.instructions.is_some());
+        assert!(profile.generate_copilot);
+        assert!(!profile.generate_agents);
     }
 
     #[test]
@@ -1308,6 +1319,14 @@ mod tests {
             description: "Desc".to_string(),
             profile_type: ProfileType::User,
             skills: vec!["skill-a".to_string(), "skill-b".to_string()],
+            auto_invoke_rules: vec![AutoInvokeRule {
+                skill_id: "skill-a".to_string(),
+                trigger: "Editing .tsx files".to_string(),
+                description: "React patterns".to_string(),
+            }],
+            instructions: Some("# My Instructions".to_string()),
+            generate_copilot: true,
+            generate_agents: false,
             created_at: "2024-01-01T00:00:00Z".to_string(),
             updated_at: "2024-01-01T00:00:00Z".to_string(),
         };
@@ -1315,10 +1334,15 @@ mod tests {
         let json = serde_json::to_string(&profile).unwrap();
         assert!(json.contains("\"profileType\":\"user\""));
         assert!(json.contains("\"skills\":[\"skill-a\",\"skill-b\"]"));
+        assert!(json.contains("\"autoInvokeRules\""));
+        assert!(json.contains("\"instructions\""));
+        assert!(json.contains("\"generateCopilot\":true"));
 
         let deserialized: Profile = serde_json::from_str(&json).unwrap();
         assert_eq!(deserialized.id, profile.id);
         assert_eq!(deserialized.profile_type, ProfileType::User);
+        assert_eq!(deserialized.auto_invoke_rules.len(), 1);
+        assert!(deserialized.instructions.is_some());
     }
 
     #[test]
@@ -1391,5 +1415,86 @@ mod tests {
         assert!(target_dir.path().join("file1.txt").exists());
         assert!(target_dir.path().join("subdir").join("file2.txt").exists());
         assert!(!target_dir.path().join(".git").exists()); // .git should be skipped
+    }
+
+    // ============================================
+    // Instructions Tests
+    // ============================================
+
+    #[test]
+    fn test_generate_template_instructions_without_skills() {
+        let content = Profiles::generate_template_instructions(
+            "React Stack",
+            "React 19 with TypeScript",
+            &[],
+        );
+
+        // Should contain profile name
+        assert!(content.contains("# React Stack - Project Instructions"));
+        // Should contain description
+        assert!(content.contains("React 19 with TypeScript"));
+        // Should contain empty skills placeholder
+        assert!(content.contains("<!-- Add skills to this profile -->"));
+        // Should contain standard sections
+        assert!(content.contains("## Rules"));
+        assert!(content.contains("## Code Standards"));
+        assert!(content.contains("## Skills Auto-invoke"));
+    }
+
+    #[test]
+    fn test_generate_template_instructions_with_skills() {
+        let skills = vec![
+            "react-19".to_string(),
+            "typescript".to_string(),
+        ];
+        let content = Profiles::generate_template_instructions(
+            "React Stack",
+            "React 19 with TypeScript",
+            &skills,
+        );
+
+        // Should contain profile name
+        assert!(content.contains("# React Stack - Project Instructions"));
+        // Should contain skills in table (skill IDs in backticks)
+        assert!(content.contains("`react-19`"));
+        assert!(content.contains("`typescript`"));
+        // Should NOT contain empty placeholder
+        assert!(!content.contains("<!-- Add skills to this profile -->"));
+    }
+
+    #[test]
+    fn test_auto_invoke_rule_serialization() {
+        let rule = AutoInvokeRule {
+            skill_id: "react-19".to_string(),
+            trigger: "Editing .tsx/.jsx files".to_string(),
+            description: "React 19 patterns and hooks".to_string(),
+        };
+
+        let json = serde_json::to_string(&rule).unwrap();
+        assert!(json.contains("\"skillId\":\"react-19\""));
+        assert!(json.contains("\"trigger\":\"Editing .tsx/.jsx files\""));
+        assert!(json.contains("\"description\":\"React 19 patterns and hooks\""));
+
+        let deserialized: AutoInvokeRule = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.skill_id, "react-19");
+    }
+
+    #[test]
+    fn test_create_profile_input_with_skills() {
+        let input = CreateProfileInput {
+            id: "react-stack".to_string(),
+            name: "React Stack".to_string(),
+            description: "React 19 with TypeScript".to_string(),
+            profile_type: ProfileType::Project,
+            skills: vec!["react-19".to_string(), "typescript".to_string()],
+            instructions: None,
+            generate_copilot: true,
+            generate_agents: false,
+        };
+
+        let json = serde_json::to_string(&input).unwrap();
+        assert!(json.contains("\"skills\":[\"react-19\",\"typescript\"]"));
+        assert!(json.contains("\"generateCopilot\":true"));
+        assert!(json.contains("\"generateAgents\":false"));
     }
 }
