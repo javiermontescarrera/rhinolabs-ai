@@ -1,4 +1,4 @@
-use crate::{Paths, Profiles, Profile, Result, RhinolabsError};
+use crate::{Paths, Profile, Profiles, Result, RhinolabsError};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -117,7 +117,7 @@ impl SkillSource {
 // Skill Category
 // ============================================
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SkillCategory {
     Corporate,
@@ -125,13 +125,8 @@ pub enum SkillCategory {
     Testing,
     AiSdk,
     Utilities,
+    #[default]
     Custom,
-}
-
-impl Default for SkillCategory {
-    fn default() -> Self {
-        Self::Custom
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -198,8 +193,18 @@ struct SkillsConfig {
 }
 
 /// Built-in skill categories
-const CORPORATE_SKILLS: &[&str] = &["rhinolabs-standards", "rhinolabs-architecture", "rhinolabs-security"];
-const FRONTEND_SKILLS: &[&str] = &["react-patterns", "typescript-best-practices", "tailwind-4", "zod-4", "zustand-5"];
+const CORPORATE_SKILLS: &[&str] = &[
+    "rhinolabs-standards",
+    "rhinolabs-architecture",
+    "rhinolabs-security",
+];
+const FRONTEND_SKILLS: &[&str] = &[
+    "react-patterns",
+    "typescript-best-practices",
+    "tailwind-4",
+    "zod-4",
+    "zustand-5",
+];
 const TESTING_SKILLS: &[&str] = &["testing-strategies", "playwright"];
 const AI_SDK_SKILLS: &[&str] = &["ai-sdk-core", "ai-sdk-react", "nextjs-integration"];
 const UTILITIES_SKILLS: &[&str] = &["skill-creator"];
@@ -262,14 +267,14 @@ impl Skills {
 
         if !content.starts_with("---") {
             return Err(RhinolabsError::ConfigError(
-                "Skill file must start with YAML frontmatter".into()
+                "Skill file must start with YAML frontmatter".into(),
             ));
         }
 
         let parts: Vec<&str> = content.splitn(3, "---").collect();
         if parts.len() < 3 {
             return Err(RhinolabsError::ConfigError(
-                "Invalid frontmatter format".into()
+                "Invalid frontmatter format".into(),
             ));
         }
 
@@ -304,9 +309,10 @@ impl Skills {
         let skill_file = dir.join("SKILL.md");
 
         if !skill_file.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("SKILL.md not found in {:?}", dir)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "SKILL.md not found in {:?}",
+                dir
+            )));
         }
 
         let id = dir
@@ -340,7 +346,8 @@ impl Skills {
 
         // Get created_at for custom skills
         let created_at = if is_custom {
-            skill_file.metadata()
+            skill_file
+                .metadata()
                 .ok()
                 .and_then(|m| m.created().ok())
                 .map(|t| chrono::DateTime::<chrono::Utc>::from(t).to_rfc3339())
@@ -422,9 +429,10 @@ impl Skills {
         let dir = Self::skills_dir()?.join(id);
 
         if !dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' not found", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' not found",
+                id
+            )));
         }
 
         Ok(dir)
@@ -436,9 +444,10 @@ impl Skills {
         let skill_dir = skills_dir.join(&input.id);
 
         if skill_dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' already exists", input.id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' already exists",
+                input.id
+            )));
         }
 
         // Create skill directory (and all parent directories)
@@ -451,7 +460,8 @@ impl Skills {
         })?;
 
         // Create SKILL.md
-        let file_content = Self::generate_skill_file(&input.name, &input.description, &input.content);
+        let file_content =
+            Self::generate_skill_file(&input.name, &input.description, &input.content);
         let skill_file = skill_dir.join("SKILL.md");
         fs::write(&skill_file, &file_content).map_err(|e| {
             RhinolabsError::ConfigError(format!(
@@ -480,9 +490,10 @@ impl Skills {
         let skill_dir = Self::skills_dir()?.join(id);
 
         if !skill_dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' not found", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' not found",
+                id
+            )));
         }
 
         let config = Self::load_config()?;
@@ -500,7 +511,8 @@ impl Skills {
         }
 
         // Write updated SKILL.md
-        let file_content = Self::generate_skill_file(&skill.name, &skill.description, &skill.content);
+        let file_content =
+            Self::generate_skill_file(&skill.name, &skill.description, &skill.content);
         let skill_file = skill_dir.join("SKILL.md");
         fs::write(&skill_file, &file_content)?;
 
@@ -517,9 +529,10 @@ impl Skills {
         let skill_dir = Self::skills_dir()?.join(id);
 
         if !skill_dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' not found", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' not found",
+                id
+            )));
         }
 
         let mut config = Self::load_config()?;
@@ -539,20 +552,26 @@ impl Skills {
 
         // Allow deletion if skill is custom OR has source metadata (installed from source)
         let is_custom = config.custom.contains(&id.to_string());
-        let has_source = config.skill_meta.get(id).map(|m| m.source_id.is_some()).unwrap_or(false);
+        let has_source = config
+            .skill_meta
+            .get(id)
+            .map(|m| m.source_id.is_some())
+            .unwrap_or(false);
 
         if !is_custom && !has_source {
-            return Err(RhinolabsError::ConfigError(
-                format!("Cannot delete built-in skill '{}'. You can only disable it.", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Cannot delete built-in skill '{}'. You can only disable it.",
+                id
+            )));
         }
 
         let skill_dir = Self::skills_dir()?.join(id);
 
         if !skill_dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' not found", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' not found",
+                id
+            )));
         }
 
         // Remove directory
@@ -575,10 +594,9 @@ impl Skills {
     /// List skills assigned to a specific profile
     pub fn list_by_profile(profile_id: &str) -> Result<Vec<Skill>> {
         // Get the profile to get its skill IDs
-        let profile = Profiles::get(profile_id)?
-            .ok_or_else(|| RhinolabsError::ConfigError(
-                format!("Profile '{}' not found", profile_id)
-            ))?;
+        let profile = Profiles::get(profile_id)?.ok_or_else(|| {
+            RhinolabsError::ConfigError(format!("Profile '{}' not found", profile_id))
+        })?;
 
         let mut skills = Vec::new();
         for skill_id in &profile.skills {
@@ -612,17 +630,21 @@ impl Skills {
         // This ensures that default sources have correct fetchable/schema values
         // even if they were saved before those fields were added
         let default_sources = SkillSource::default_sources();
-        let sources: Vec<SkillSource> = config.sources.into_iter().map(|mut s| {
-            // For known default sources, ensure fetchable and schema are set correctly
-            if let Some(default) = default_sources.iter().find(|d| d.id == s.id) {
-                // Only override if the source hasn't been explicitly set to fetchable
-                // We check if it's false (the old default) and the default is true
-                if !s.fetchable && default.fetchable {
-                    s.fetchable = default.fetchable;
+        let sources: Vec<SkillSource> = config
+            .sources
+            .into_iter()
+            .map(|mut s| {
+                // For known default sources, ensure fetchable and schema are set correctly
+                if let Some(default) = default_sources.iter().find(|d| d.id == s.id) {
+                    // Only override if the source hasn't been explicitly set to fetchable
+                    // We check if it's false (the old default) and the default is true
+                    if !s.fetchable && default.fetchable {
+                        s.fetchable = default.fetchable;
+                    }
                 }
-            }
-            s
-        }).collect();
+                s
+            })
+            .collect();
 
         Ok(sources)
     }
@@ -638,9 +660,10 @@ impl Skills {
 
         // Check for duplicate id
         if config.sources.iter().any(|s| s.id == source.id) {
-            return Err(RhinolabsError::ConfigError(
-                format!("Source '{}' already exists", source.id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Source '{}' already exists",
+                source.id
+            )));
         }
 
         config.sources.push(source);
@@ -664,7 +687,9 @@ impl Skills {
             config.sources = SkillSource::default_sources();
         }
 
-        let source = config.sources.iter_mut()
+        let source = config
+            .sources
+            .iter_mut()
             .find(|s| s.id == id)
             .ok_or_else(|| RhinolabsError::ConfigError(format!("Source '{}' not found", id)))?;
 
@@ -697,9 +722,10 @@ impl Skills {
         // Don't allow removing default sources, just disable them
         let is_default = SkillSource::default_sources().iter().any(|s| s.id == id);
         if is_default {
-            return Err(RhinolabsError::ConfigError(
-                format!("Cannot remove default source '{}'. You can disable it instead.", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Cannot remove default source '{}'. You can disable it instead.",
+                id
+            )));
         }
 
         config.sources.retain(|s| s.id != id);
@@ -716,9 +742,10 @@ impl Skills {
         let skill_dir = Self::skills_dir()?.join(skill_id);
 
         if skill_dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' already exists", skill_id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' already exists",
+                skill_id
+            )));
         }
 
         // Create skill directory
@@ -732,11 +759,14 @@ impl Skills {
         let mut config = Self::load_config()?;
         let content_hash = Self::hash_content(skill_content);
 
-        config.skill_meta.insert(skill_id.to_string(), SkillMeta {
-            source_id: Some(source_id.to_string()),
-            source_name: Some(source_name.to_string()),
-            original_hash: Some(content_hash),
-        });
+        config.skill_meta.insert(
+            skill_id.to_string(),
+            SkillMeta {
+                source_id: Some(source_id.to_string()),
+                source_name: Some(source_name.to_string()),
+                original_hash: Some(content_hash),
+            },
+        );
 
         Self::save_config(&config)?;
 
@@ -755,9 +785,10 @@ impl Skills {
         let skill_dir = Self::skills_dir()?.join(skill_id);
 
         if skill_dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' already exists", skill_id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' already exists",
+                skill_id
+            )));
         }
 
         // Get list of files
@@ -800,11 +831,14 @@ impl Skills {
         let mut config = Self::load_config()?;
         let content_hash = Self::hash_content(&skill_md_content);
 
-        config.skill_meta.insert(skill_id.to_string(), SkillMeta {
-            source_id: Some(source_id.to_string()),
-            source_name: Some(source_name.to_string()),
-            original_hash: Some(content_hash),
-        });
+        config.skill_meta.insert(
+            skill_id.to_string(),
+            SkillMeta {
+                source_id: Some(source_id.to_string()),
+                source_name: Some(source_name.to_string()),
+                original_hash: Some(content_hash),
+            },
+        );
 
         Self::save_config(&config)?;
 
@@ -818,9 +852,10 @@ impl Skills {
         let skill_dir = Self::skills_dir()?.join(id);
 
         if !skill_dir.exists() {
-            return Err(RhinolabsError::ConfigError(
-                format!("Skill '{}' not found", id)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' not found",
+                id
+            )));
         }
 
         let skill_file = skill_dir.join("SKILL.md");
@@ -867,7 +902,7 @@ impl Skills {
 
         if parts.len() < 2 {
             return Err(RhinolabsError::ConfigError(
-                "Invalid GitHub URL format".into()
+                "Invalid GitHub URL format".into(),
             ));
         }
 
@@ -892,15 +927,15 @@ impl Skills {
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
-            return Err(RhinolabsError::NetworkError(
-                format!("GitHub API error {}: {}", status, body)
-            ));
+            return Err(RhinolabsError::NetworkError(format!(
+                "GitHub API error {}: {}",
+                status, body
+            )));
         }
 
-        let contents: Vec<GitHubContent> = response
-            .json()
-            .await
-            .map_err(|e| RhinolabsError::NetworkError(format!("Failed to parse GitHub response: {}", e)))?;
+        let contents: Vec<GitHubContent> = response.json().await.map_err(|e| {
+            RhinolabsError::NetworkError(format!("Failed to parse GitHub response: {}", e))
+        })?;
 
         // Get installed skill IDs
         let installed = Self::installed_ids().unwrap_or_default();
@@ -916,26 +951,24 @@ impl Skills {
                 );
 
                 match Self::fetch_skill_content(&client, &skill_url).await {
-                    Ok(skill_content) => {
-                        match Self::parse_skill_file(&skill_content) {
-                            Ok((frontmatter, _)) => {
-                                remote_skills.push(RemoteSkill {
-                                    id: item.name.clone(),
-                                    name: frontmatter.name,
-                                    description: frontmatter.description,
-                                    category: "custom".to_string(),
-                                    source_id: source.id.clone(),
-                                    source_name: source.name.clone(),
-                                    url: skill_url,
-                                    stars: None,
-                                    installed: installed.contains(&item.name),
-                                });
-                            }
-                            Err(e) => {
-                                eprintln!("[WARN] Failed to parse SKILL.md for '{}': {}", item.name, e);
-                            }
+                    Ok(skill_content) => match Self::parse_skill_file(&skill_content) {
+                        Ok((frontmatter, _)) => {
+                            remote_skills.push(RemoteSkill {
+                                id: item.name.clone(),
+                                name: frontmatter.name,
+                                description: frontmatter.description,
+                                category: "custom".to_string(),
+                                source_id: source.id.clone(),
+                                source_name: source.name.clone(),
+                                url: skill_url,
+                                stars: None,
+                                installed: installed.contains(&item.name),
+                            });
                         }
-                    }
+                        Err(e) => {
+                            eprintln!("[WARN] Failed to parse SKILL.md for '{}': {}", item.name, e);
+                        }
+                    },
                     Err(e) => {
                         eprintln!("[WARN] Failed to fetch SKILL.md for '{}': {}", item.name, e);
                     }
@@ -956,9 +989,10 @@ impl Skills {
             .map_err(|e| RhinolabsError::NetworkError(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(RhinolabsError::NetworkError(
-                format!("Failed to fetch: {}", response.status())
-            ));
+            return Err(RhinolabsError::NetworkError(format!(
+                "Failed to fetch: {}",
+                response.status()
+            )));
         }
 
         response
@@ -974,19 +1008,25 @@ impl Skills {
     }
 
     /// Fetch the file structure of a remote skill from GitHub
-    pub async fn fetch_remote_skill_files(source_url: &str, skill_id: &str) -> Result<Vec<RemoteSkillFile>> {
+    pub async fn fetch_remote_skill_files(
+        source_url: &str,
+        skill_id: &str,
+    ) -> Result<Vec<RemoteSkillFile>> {
         // Validate inputs
         if skill_id.is_empty() {
-            return Err(RhinolabsError::ConfigError("skill_id cannot be empty".into()));
+            return Err(RhinolabsError::ConfigError(
+                "skill_id cannot be empty".into(),
+            ));
         }
 
         // Parse GitHub URL to get owner/repo
         let parts: Vec<&str> = source_url.trim_end_matches('/').split('/').collect();
 
         if parts.len() < 2 {
-            return Err(RhinolabsError::ConfigError(
-                format!("Invalid GitHub URL format: {}", source_url)
-            ));
+            return Err(RhinolabsError::ConfigError(format!(
+                "Invalid GitHub URL format: {}",
+                source_url
+            )));
         }
 
         let repo = parts[parts.len() - 1];
@@ -998,14 +1038,7 @@ impl Skills {
         let path = format!("skills/{}", skill_id);
 
         // Recursively fetch directory contents
-        Self::fetch_github_directory_contents(
-            &client,
-            owner,
-            repo,
-            &path,
-            "",
-            &mut files,
-        ).await?;
+        Self::fetch_github_directory_contents(&client, owner, repo, &path, "", &mut files).await?;
 
         Ok(files)
     }
@@ -1033,9 +1066,11 @@ impl Skills {
             .map_err(|e| RhinolabsError::NetworkError(e.to_string()))?;
 
         if !response.status().is_success() {
-            return Err(RhinolabsError::NetworkError(
-                format!("Failed to fetch '{}' from GitHub: HTTP {}", path, response.status())
-            ));
+            return Err(RhinolabsError::NetworkError(format!(
+                "Failed to fetch '{}' from GitHub: HTTP {}",
+                path,
+                response.status()
+            )));
         }
 
         let contents: Vec<GitHubContentExtended> = response
@@ -1067,7 +1102,8 @@ impl Skills {
                     &format!("{}/{}", path, item.name),
                     &item_relative_path,
                     files,
-                )).await?;
+                ))
+                .await?;
             } else {
                 let language = Self::detect_language_from_name(&item.name);
                 files.push(RemoteSkillFile {
@@ -1136,7 +1172,7 @@ pub struct RemoteSkillFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{ENV_MUTEX, TestEnv as BaseTestEnv};
+    use crate::test_utils::{TestEnv as BaseTestEnv, ENV_MUTEX};
 
     /// Extended test environment with skills-specific helpers
     struct TestEnv {
@@ -1166,7 +1202,8 @@ mod tests {
             let skill_dir = self.skills_dir().join(id);
             fs::create_dir_all(&skill_dir).expect("Failed to create skill dir");
             let skill_content = Skills::generate_skill_file(name, description, content);
-            fs::write(skill_dir.join("SKILL.md"), skill_content).expect("Failed to write skill file");
+            fs::write(skill_dir.join("SKILL.md"), skill_content)
+                .expect("Failed to write skill file");
         }
 
         fn create_config(&self, config: &SkillsConfig) {
@@ -1214,11 +1251,20 @@ This is the content.
 
     #[test]
     fn test_get_category() {
-        assert_eq!(Skills::get_category("rhinolabs-standards"), SkillCategory::Corporate);
-        assert_eq!(Skills::get_category("react-patterns"), SkillCategory::Frontend);
+        assert_eq!(
+            Skills::get_category("rhinolabs-standards"),
+            SkillCategory::Corporate
+        );
+        assert_eq!(
+            Skills::get_category("react-patterns"),
+            SkillCategory::Frontend
+        );
         assert_eq!(Skills::get_category("playwright"), SkillCategory::Testing);
         assert_eq!(Skills::get_category("ai-sdk-core"), SkillCategory::AiSdk);
-        assert_eq!(Skills::get_category("skill-creator"), SkillCategory::Utilities);
+        assert_eq!(
+            Skills::get_category("skill-creator"),
+            SkillCategory::Utilities
+        );
         assert_eq!(Skills::get_category("unknown-skill"), SkillCategory::Custom);
     }
 
@@ -1257,13 +1303,34 @@ This is the content.
 
     #[test]
     fn test_detect_language_from_name() {
-        assert_eq!(Skills::detect_language_from_name("test.md"), Some("markdown".to_string()));
-        assert_eq!(Skills::detect_language_from_name("test.ts"), Some("typescript".to_string()));
-        assert_eq!(Skills::detect_language_from_name("test.tsx"), Some("typescript".to_string()));
-        assert_eq!(Skills::detect_language_from_name("test.js"), Some("javascript".to_string()));
-        assert_eq!(Skills::detect_language_from_name("test.py"), Some("python".to_string()));
-        assert_eq!(Skills::detect_language_from_name("test.rs"), Some("rust".to_string()));
-        assert_eq!(Skills::detect_language_from_name("test.go"), Some("go".to_string()));
+        assert_eq!(
+            Skills::detect_language_from_name("test.md"),
+            Some("markdown".to_string())
+        );
+        assert_eq!(
+            Skills::detect_language_from_name("test.ts"),
+            Some("typescript".to_string())
+        );
+        assert_eq!(
+            Skills::detect_language_from_name("test.tsx"),
+            Some("typescript".to_string())
+        );
+        assert_eq!(
+            Skills::detect_language_from_name("test.js"),
+            Some("javascript".to_string())
+        );
+        assert_eq!(
+            Skills::detect_language_from_name("test.py"),
+            Some("python".to_string())
+        );
+        assert_eq!(
+            Skills::detect_language_from_name("test.rs"),
+            Some("rust".to_string())
+        );
+        assert_eq!(
+            Skills::detect_language_from_name("test.go"),
+            Some("go".to_string())
+        );
         assert_eq!(Skills::detect_language_from_name("test.unknown"), None);
         assert_eq!(Skills::detect_language_from_name("noextension"), None);
     }
@@ -1302,19 +1369,17 @@ This is the content.
 
         // Create a config where anthropic-official has fetchable=false (old saved config)
         let config = SkillsConfig {
-            sources: vec![
-                SkillSource {
-                    id: "anthropic-official".to_string(),
-                    name: "Anthropic Official".to_string(),
-                    source_type: SkillSourceType::Official,
-                    url: "https://github.com/anthropics/skills".to_string(),
-                    description: "Official skills".to_string(),
-                    enabled: true,
-                    fetchable: false, // Old saved value
-                    schema: SkillSchema::Standard,
-                    skill_count: None,
-                },
-            ],
+            sources: vec![SkillSource {
+                id: "anthropic-official".to_string(),
+                name: "Anthropic Official".to_string(),
+                source_type: SkillSourceType::Official,
+                url: "https://github.com/anthropics/skills".to_string(),
+                description: "Official skills".to_string(),
+                enabled: true,
+                fetchable: false, // Old saved value
+                schema: SkillSchema::Standard,
+                skill_count: None,
+            }],
             ..Default::default()
         };
         env.create_config(&config);
@@ -1322,8 +1387,14 @@ This is the content.
         let sources = Skills::list_sources().expect("Should list sources");
 
         // The anthropic-official source should have fetchable=true after merge
-        let official = sources.iter().find(|s| s.id == "anthropic-official").unwrap();
-        assert!(official.fetchable, "fetchable should be merged from defaults");
+        let official = sources
+            .iter()
+            .find(|s| s.id == "anthropic-official")
+            .unwrap();
+        assert!(
+            official.fetchable,
+            "fetchable should be merged from defaults"
+        );
     }
 
     #[test]
@@ -1333,19 +1404,17 @@ This is the content.
         env.setup_skills_dir();
 
         let config = SkillsConfig {
-            sources: vec![
-                SkillSource {
-                    id: "custom-source".to_string(),
-                    name: "My Custom Source".to_string(),
-                    source_type: SkillSourceType::Local,
-                    url: "https://example.com/skills".to_string(),
-                    description: "Custom source".to_string(),
-                    enabled: true,
-                    fetchable: false,
-                    schema: SkillSchema::Custom,
-                    skill_count: None,
-                },
-            ],
+            sources: vec![SkillSource {
+                id: "custom-source".to_string(),
+                name: "My Custom Source".to_string(),
+                source_type: SkillSourceType::Local,
+                url: "https://example.com/skills".to_string(),
+                description: "Custom source".to_string(),
+                enabled: true,
+                fetchable: false,
+                schema: SkillSchema::Custom,
+                skill_count: None,
+            }],
             ..Default::default()
         };
         env.create_config(&config);
@@ -1364,7 +1433,12 @@ This is the content.
         let _lock = ENV_MUTEX.lock().unwrap();
         let env = TestEnv::new();
         env.setup_skills_dir();
-        env.create_skill("my-custom-skill", "My Custom Skill", "A custom skill", "# Content");
+        env.create_skill(
+            "my-custom-skill",
+            "My Custom Skill",
+            "A custom skill",
+            "# Content",
+        );
 
         // Mark it as custom in config
         let config = SkillsConfig {
@@ -1391,15 +1465,23 @@ This is the content.
         let _lock = ENV_MUTEX.lock().unwrap();
         let env = TestEnv::new();
         env.setup_skills_dir();
-        env.create_skill("installed-skill", "Installed Skill", "From source", "# Content");
+        env.create_skill(
+            "installed-skill",
+            "Installed Skill",
+            "From source",
+            "# Content",
+        );
 
         // Mark it with source metadata (installed from source)
         let mut skill_meta = std::collections::HashMap::new();
-        skill_meta.insert("installed-skill".to_string(), SkillMeta {
-            source_id: Some("anthropic-official".to_string()),
-            source_name: Some("Anthropic Official".to_string()),
-            original_hash: Some("abc123".to_string()),
-        });
+        skill_meta.insert(
+            "installed-skill".to_string(),
+            SkillMeta {
+                source_id: Some("anthropic-official".to_string()),
+                source_name: Some("Anthropic Official".to_string()),
+                original_hash: Some("abc123".to_string()),
+            },
+        );
         let config = SkillsConfig {
             skill_meta,
             ..Default::default()
@@ -1420,7 +1502,12 @@ This is the content.
         let _lock = ENV_MUTEX.lock().unwrap();
         let env = TestEnv::new();
         env.setup_skills_dir();
-        env.create_skill("react-patterns", "React Patterns", "Built-in skill", "# Content");
+        env.create_skill(
+            "react-patterns",
+            "React Patterns",
+            "Built-in skill",
+            "# Content",
+        );
 
         // Don't mark it as custom or with source metadata
         let config = SkillsConfig::default();
@@ -1429,7 +1516,10 @@ This is the content.
         // Try to delete it
         let result = Skills::delete("react-patterns");
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Cannot delete built-in skill"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot delete built-in skill"));
     }
 
     #[test]
@@ -1511,7 +1601,12 @@ This is the content.
         env.setup_skills_dir();
 
         // Create skills in different categories (using known built-in IDs)
-        env.create_skill("rhinolabs-standards", "Rhinolabs Standards", "Corporate", "# Corp");
+        env.create_skill(
+            "rhinolabs-standards",
+            "Rhinolabs Standards",
+            "Corporate",
+            "# Corp",
+        );
         env.create_skill("react-patterns", "React Patterns", "Frontend", "# Frontend");
         env.create_skill("custom-skill", "Custom Skill", "Custom", "# Custom");
 
@@ -1712,11 +1807,14 @@ This is the content.
         fs::write(skill_dir.join("SKILL.md"), &original_content).unwrap();
 
         let mut skill_meta = std::collections::HashMap::new();
-        skill_meta.insert("modified-skill".to_string(), SkillMeta {
-            source_id: Some("test-source".to_string()),
-            source_name: Some("Test Source".to_string()),
-            original_hash: Some(original_hash),
-        });
+        skill_meta.insert(
+            "modified-skill".to_string(),
+            SkillMeta {
+                source_id: Some("test-source".to_string()),
+                source_name: Some("Test Source".to_string()),
+                original_hash: Some(original_hash),
+            },
+        );
         let config = SkillsConfig {
             skill_meta,
             ..Default::default()
