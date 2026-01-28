@@ -26,6 +26,7 @@ import type {
   Profile,
   CreateProfileInput,
   UpdateProfileInput,
+  AutoInvokeRule,
   ProfileInstallResult,
 } from './types';
 
@@ -421,6 +422,15 @@ export const api = {
 
   uninstallProfile(targetPath: string): Promise<void> {
     return invoke('uninstall_profile', { targetPath });
+  },
+
+  // Auto-invoke Rules
+  getAutoInvokeRules(profileId: string): Promise<AutoInvokeRule[]> {
+    return invoke('get_auto_invoke_rules', { profileId });
+  },
+
+  updateAutoInvokeRules(profileId: string, rules: AutoInvokeRule[]): Promise<Profile> {
+    return invoke('update_auto_invoke_rules', { profileId, rules });
   },
 
   // Deploy & Sync

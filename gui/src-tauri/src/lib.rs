@@ -126,6 +126,9 @@ pub fn run() {
             install_profile,
             update_installed_profile,
             uninstall_profile,
+            // Auto-invoke Rules
+            get_auto_invoke_rules,
+            update_auto_invoke_rules,
             // Deploy & Sync
             export_config,
             deploy_config,

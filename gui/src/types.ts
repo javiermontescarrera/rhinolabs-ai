@@ -260,12 +260,30 @@ export interface RemoteSkillFile {
 
 export type ProfileType = 'user' | 'project';
 
+/** Auto-invoke rule: defines when a skill should be automatically loaded */
+export interface AutoInvokeRule {
+  /** The skill ID this rule applies to */
+  skillId: string;
+  /** When to trigger (e.g., "Editing .tsx/.jsx files") */
+  trigger: string;
+  /** Description of what the skill provides */
+  description: string;
+}
+
 export interface Profile {
   id: string;
   name: string;
   description: string;
   profileType: ProfileType;
   skills: string[];
+  /** Auto-invoke rules: when to load each skill */
+  autoInvokeRules: AutoInvokeRule[];
+  /** Custom instructions to include in CLAUDE.md */
+  instructions?: string;
+  /** Generate .github/copilot-instructions.md */
+  generateCopilot: boolean;
+  /** Generate AGENTS.md as master file */
+  generateAgents: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -275,12 +293,18 @@ export interface CreateProfileInput {
   name: string;
   description: string;
   profileType: ProfileType;
+  instructions?: string;
+  generateCopilot?: boolean;
+  generateAgents?: boolean;
 }
 
 export interface UpdateProfileInput {
   name?: string;
   description?: string;
   profileType?: ProfileType;
+  instructions?: string;
+  generateCopilot?: boolean;
+  generateAgents?: boolean;
 }
 
 export interface ProfileInstallResult {

@@ -24,6 +24,22 @@ impl Default for ProfileType {
 }
 
 // ============================================
+// Auto-invoke Rules
+// ============================================
+
+/// Defines when a skill should be automatically loaded based on context
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoInvokeRule {
+    /// The skill ID this rule applies to
+    pub skill_id: String,
+    /// When to trigger (e.g., "Editing .tsx/.jsx files")
+    pub trigger: String,
+    /// Description of what the skill provides (e.g., "React 19 patterns and hooks")
+    pub description: String,
+}
+
+// ============================================
 // Profile Entity
 // ============================================
 
@@ -35,8 +51,24 @@ pub struct Profile {
     pub description: String,
     pub profile_type: ProfileType,
     pub skills: Vec<String>,
+    /// Auto-invoke rules: when to load each skill
+    #[serde(default)]
+    pub auto_invoke_rules: Vec<AutoInvokeRule>,
+    /// Custom instructions to include in CLAUDE.md
+    #[serde(default)]
+    pub instructions: Option<String>,
+    /// Generate .github/copilot-instructions.md
+    #[serde(default = "default_true")]
+    pub generate_copilot: bool,
+    /// Generate AGENTS.md as master file
+    #[serde(default)]
+    pub generate_agents: bool,
     pub created_at: String,
     pub updated_at: String,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,6 +78,12 @@ pub struct CreateProfileInput {
     pub name: String,
     pub description: String,
     pub profile_type: ProfileType,
+    #[serde(default)]
+    pub instructions: Option<String>,
+    #[serde(default = "default_true")]
+    pub generate_copilot: bool,
+    #[serde(default)]
+    pub generate_agents: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +92,23 @@ pub struct UpdateProfileInput {
     pub name: Option<String>,
     pub description: Option<String>,
     pub profile_type: Option<ProfileType>,
+    pub instructions: Option<String>,
+    pub generate_copilot: Option<bool>,
+    pub generate_agents: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateAutoInvokeInput {
+    pub profile_id: String,
+    pub rules: Vec<AutoInvokeRule>,
+}
+
+/// Generated content for multi-AI instruction files (internal use)
+struct GeneratedAiContent {
+    claude_md: String,
+    copilot_md: String,
+    agents_md: String,
 }
 
 // ============================================
@@ -138,6 +193,10 @@ impl Profiles {
             description: "User-level skills that apply to all projects. Install with: rhinolabs install".to_string(),
             profile_type: ProfileType::User,
             skills: Vec::new(),
+            auto_invoke_rules: Vec::new(),
+            instructions: None,
+            generate_copilot: false, // Main-Profile doesn't generate copilot (user-level)
+            generate_agents: false,
             created_at: now.clone(),
             updated_at: now,
         }
@@ -228,6 +287,10 @@ impl Profiles {
             description: input.description,
             profile_type: ProfileType::Project, // Always Project for new profiles
             skills: Vec::new(),
+            auto_invoke_rules: Vec::new(),
+            instructions: input.instructions,
+            generate_copilot: input.generate_copilot,
+            generate_agents: input.generate_agents,
             created_at: now.clone(),
             updated_at: now,
         };
@@ -251,6 +314,15 @@ impl Profiles {
         }
         if let Some(description) = input.description {
             profile.description = description;
+        }
+        if let Some(instructions) = input.instructions {
+            profile.instructions = Some(instructions);
+        }
+        if let Some(generate_copilot) = input.generate_copilot {
+            profile.generate_copilot = generate_copilot;
+        }
+        if let Some(generate_agents) = input.generate_agents {
+            profile.generate_agents = generate_agents;
         }
         // Note: profile_type is intentionally NOT updated.
         // Main-Profile is User, all others are Project. This cannot be changed.
@@ -340,6 +412,38 @@ impl Profiles {
             .filter(|p| p.skills.contains(&skill_id.to_string()))
             .collect();
         Ok(profiles)
+    }
+
+    // ============================================
+    // Auto-invoke Rules Management
+    // ============================================
+
+    /// Update auto-invoke rules for a profile
+    pub fn update_auto_invoke_rules(profile_id: &str, rules: Vec<AutoInvokeRule>) -> Result<Profile> {
+        let mut config = Self::load_config()?;
+
+        let profile = config.profiles.iter_mut()
+            .find(|p| p.id == profile_id)
+            .ok_or_else(|| RhinolabsError::ConfigError(
+                format!("Profile '{}' not found", profile_id)
+            ))?;
+
+        profile.auto_invoke_rules = rules;
+        profile.updated_at = chrono::Utc::now().to_rfc3339();
+
+        let updated = profile.clone();
+        Self::save_config(&config)?;
+
+        Ok(updated)
+    }
+
+    /// Get auto-invoke rules for a profile
+    pub fn get_auto_invoke_rules(profile_id: &str) -> Result<Vec<AutoInvokeRule>> {
+        let profile = Self::get(profile_id)?
+            .ok_or_else(|| RhinolabsError::ConfigError(
+                format!("Profile '{}' not found", profile_id)
+            ))?;
+        Ok(profile.auto_invoke_rules)
     }
 
     // ============================================
@@ -458,7 +562,9 @@ impl Profiles {
     /// Install Project Profile as a plugin structure
     /// Creates:
     ///   - .claude-plugin/plugin.json (plugin manifest from profile metadata)
-    ///   - CLAUDE.md (skill loading instructions)
+    ///   - CLAUDE.md (with auto-invoke table and instructions)
+    ///   - .github/copilot-instructions.md (if generate_copilot is true)
+    ///   - AGENTS.md (if generate_agents is true)
     fn install_project_profile_as_plugin(
         target_path: &Path,
         profile: &Profile,
@@ -477,48 +583,237 @@ impl Profiles {
             "profile": {
                 "id": profile.id,
                 "name": profile.name,
-                "skills": profile.skills
+                "skills": profile.skills,
+                "autoInvokeRules": profile.auto_invoke_rules
             }
         });
 
         let manifest_path = plugin_dir.join("plugin.json");
         fs::write(&manifest_path, serde_json::to_string_pretty(&plugin_manifest)?)?;
 
-        // 2. Create CLAUDE.md with skill references
-        let skill_list = profile.skills.iter()
-            .map(|s| format!("- {}", s))
-            .collect::<Vec<_>>()
-            .join("\n");
+        // 2. Generate content for AI instruction files
+        let content = Self::generate_ai_instructions_content(profile);
 
-        let claude_md_content = format!(
-            r#"# {} Profile
-
-{}
-
-## Skills
-
-This project uses the following skills from the {} profile:
-
-{}
-
-Skills are located in `.claude/skills/` and are automatically loaded by Claude Code.
-
----
-*Installed by rhinolabs-ai*
-"#,
-            profile.name,
-            profile.description,
-            profile.name,
-            skill_list
-        );
-
+        // 3. Create CLAUDE.md
         let claude_md_path = target_path.join("CLAUDE.md");
         // Only create if doesn't exist (don't overwrite user's custom CLAUDE.md)
         if !claude_md_path.exists() {
-            fs::write(&claude_md_path, claude_md_content)?;
+            fs::write(&claude_md_path, &content.claude_md)?;
+        }
+
+        // 4. Create .github/copilot-instructions.md if enabled
+        if profile.generate_copilot {
+            let github_dir = target_path.join(".github");
+            fs::create_dir_all(&github_dir)?;
+            let copilot_path = github_dir.join("copilot-instructions.md");
+            fs::write(&copilot_path, &content.copilot_md)?;
+        }
+
+        // 5. Create AGENTS.md if enabled (master file)
+        if profile.generate_agents {
+            let agents_path = target_path.join("AGENTS.md");
+            fs::write(&agents_path, &content.agents_md)?;
         }
 
         Ok((Some(true), None, None))
+    }
+
+    /// Generate content for CLAUDE.md, copilot-instructions.md, and AGENTS.md
+    fn generate_ai_instructions_content(profile: &Profile) -> GeneratedAiContent {
+        // Build auto-invoke table
+        let auto_invoke_table = if !profile.auto_invoke_rules.is_empty() {
+            let rows: Vec<String> = profile.auto_invoke_rules.iter()
+                .map(|rule| format!(
+                    "| {} | {} | `.claude/skills/{}/SKILL.md` |",
+                    rule.trigger, rule.skill_id, rule.skill_id
+                ))
+                .collect();
+
+            format!(
+                r#"## Auto-invoke Skills
+
+IMPORTANT: Load these skills based on context:
+
+| Context | Skill | Read First |
+|---------|-------|------------|
+{}
+
+"#,
+                rows.join("\n")
+            )
+        } else {
+            String::new()
+        };
+
+        // Build skills list
+        let skills_list = profile.skills.iter()
+            .map(|s| format!("- `{}`: See `.claude/skills/{}/SKILL.md`", s, s))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        // Build custom instructions section
+        let custom_instructions = match &profile.instructions {
+            Some(instr) if !instr.is_empty() => format!(
+                r#"## Project Standards
+
+{}
+
+"#,
+                instr
+            ),
+            _ => String::new(),
+        };
+
+        // CLAUDE.md content
+        let claude_md = format!(
+            r#"# Project Instructions
+
+> Auto-generated by rhinolabs-ai | Profile: {}
+> Run `rhinolabs-ai profile update` to regenerate
+
+{}{}## Available Skills
+
+Skills in `.claude/skills/`:
+
+{}
+
+---
+*Installed by rhinolabs-ai | Profile: {}*
+"#,
+            profile.id,
+            auto_invoke_table,
+            custom_instructions,
+            skills_list,
+            profile.id
+        );
+
+        // copilot-instructions.md content (adapted for Copilot)
+        let copilot_auto_invoke = if !profile.auto_invoke_rules.is_empty() {
+            let rows: Vec<String> = profile.auto_invoke_rules.iter()
+                .map(|rule| format!(
+                    "| {} | {} | {} |",
+                    rule.trigger, rule.skill_id, rule.description
+                ))
+                .collect();
+
+            format!(
+                r#"## Context-based Guidelines
+
+Apply these guidelines based on context:
+
+| Context | Guideline | Description |
+|---------|-----------|-------------|
+{}
+
+"#,
+                rows.join("\n")
+            )
+        } else {
+            String::new()
+        };
+
+        let copilot_md = format!(
+            r#"# GitHub Copilot Instructions
+
+> Auto-generated by rhinolabs-ai | Profile: {}
+> Source: AGENTS.md (if present) or profile configuration
+
+{}{}## Skills Reference
+
+This project uses the following skill guidelines (see `.claude/skills/` for details):
+
+{}
+
+---
+*Generated by rhinolabs-ai*
+"#,
+            profile.id,
+            copilot_auto_invoke,
+            custom_instructions,
+            skills_list
+        );
+
+        // AGENTS.md content (master file)
+        let agents_auto_invoke = if !profile.auto_invoke_rules.is_empty() {
+            let rows: Vec<String> = profile.auto_invoke_rules.iter()
+                .map(|rule| format!(
+                    "| {} | `{}` | {} |",
+                    rule.trigger, rule.skill_id, rule.description
+                ))
+                .collect();
+
+            format!(
+                r#"## Auto-invoke Rules
+
+When performing these actions, load the corresponding skill FIRST:
+
+| Context | Skill | Description |
+|---------|-------|-------------|
+{}
+
+"#,
+                rows.join("\n")
+            )
+        } else {
+            String::new()
+        };
+
+        let skills_table = profile.skills.iter()
+            .map(|s| format!("| `{}` | `.claude/skills/{}/SKILL.md` |", s, s))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let agents_md = format!(
+            r#"# {} - AI Agent Configuration
+
+> **Single Source of Truth** - This file is the master for all AI assistants.
+> Generated by rhinolabs-ai from profile: {}
+
+## Profile Information
+
+- **ID**: {}
+- **Name**: {}
+- **Description**: {}
+
+{}{}## Available Skills
+
+| Skill | Location |
+|-------|----------|
+{}
+
+## How Skills Work
+
+1. **Auto-detection**: AI reads this file or CLAUDE.md for context
+2. **Context matching**: Based on file type or action, relevant skill loads
+3. **Pattern application**: AI follows exact patterns from the skill
+4. **Consistency**: Same patterns across all AI assistants
+
+## File Generation
+
+This profile generates:
+- `CLAUDE.md` - For Claude Code
+{}{}
+---
+*Generated by rhinolabs-ai | Profile: {} | Version: 1.0.0*
+"#,
+            profile.name,
+            profile.id,
+            profile.id,
+            profile.name,
+            profile.description,
+            agents_auto_invoke,
+            custom_instructions,
+            skills_table,
+            if profile.generate_copilot { "- `.github/copilot-instructions.md` - For GitHub Copilot\n" } else { "" },
+            if profile.generate_agents { "- `AGENTS.md` - Master reference file\n" } else { "" },
+            profile.id
+        );
+
+        GeneratedAiContent {
+            claude_md,
+            copilot_md,
+            agents_md,
+        }
     }
 
     /// Install Main-Profile configuration (instructions, settings, output style)
@@ -609,8 +904,37 @@ Skills are located in `.claude/skills/` and are automatically loaded by Claude C
         let claude_md = target_path.join("CLAUDE.md");
         if claude_md.exists() {
             if let Ok(content) = fs::read_to_string(&claude_md) {
-                if content.contains("*Installed by rhinolabs-ai*") {
+                if content.contains("*Installed by rhinolabs-ai") || content.contains("Auto-generated by rhinolabs-ai") {
                     fs::remove_file(&claude_md)?;
+                }
+            }
+        }
+
+        // Remove AGENTS.md only if it was generated by us
+        let agents_md = target_path.join("AGENTS.md");
+        if agents_md.exists() {
+            if let Ok(content) = fs::read_to_string(&agents_md) {
+                if content.contains("Generated by rhinolabs-ai") {
+                    fs::remove_file(&agents_md)?;
+                }
+            }
+        }
+
+        // Remove .github/copilot-instructions.md only if it was generated by us
+        let copilot_md = target_path.join(".github").join("copilot-instructions.md");
+        if copilot_md.exists() {
+            if let Ok(content) = fs::read_to_string(&copilot_md) {
+                if content.contains("Generated by rhinolabs-ai") || content.contains("Auto-generated by rhinolabs-ai") {
+                    fs::remove_file(&copilot_md)?;
+                    // Remove .github dir if empty
+                    let github_dir = target_path.join(".github");
+                    if github_dir.exists() {
+                        if let Ok(entries) = fs::read_dir(&github_dir) {
+                            if entries.count() == 0 {
+                                fs::remove_dir(&github_dir)?;
+                            }
+                        }
+                    }
                 }
             }
         }

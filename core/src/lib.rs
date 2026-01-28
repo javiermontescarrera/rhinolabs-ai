@@ -33,5 +33,5 @@ pub use skills::{Skills, Skill, SkillCategory, CreateSkillInput, UpdateSkillInpu
 pub use instructions::{InstructionsManager, Instructions};
 pub use mcp_config::{McpConfigManager, McpConfig, McpServer, McpSettings};
 pub use project::{Project, ProjectConfig, ProjectStatus, GitHubConfig, ReleaseAsset};
-pub use profiles::{Profiles, Profile, ProfileType, CreateProfileInput, UpdateProfileInput, ProfileInstallResult, SkillInstallError};
+pub use profiles::{Profiles, Profile, ProfileType, CreateProfileInput, UpdateProfileInput, UpdateAutoInvokeInput, AutoInvokeRule, ProfileInstallResult, SkillInstallError};
 pub use deploy::{Deploy, ConfigManifest, DeployResult, SyncResult};

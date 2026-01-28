@@ -7,7 +7,7 @@ use rhinolabs_core::{
     InstructionsManager, Instructions,
     McpConfigManager, McpConfig, McpServer, McpSettings,
     Project, ProjectConfig, ProjectStatus,
-    Profiles, Profile, CreateProfileInput, UpdateProfileInput, ProfileInstallResult,
+    Profiles, Profile, CreateProfileInput, UpdateProfileInput, AutoInvokeRule, ProfileInstallResult,
     Deploy, ConfigManifest, DeployResult, SyncResult,
 };
 use rhinolabs_core::diagnostics::DiagnosticReport;
@@ -742,6 +742,16 @@ pub fn update_installed_profile(profile_id: String, target_path: Option<String>)
 #[tauri::command]
 pub fn uninstall_profile(target_path: String) -> Result<(), String> {
     Profiles::uninstall(std::path::Path::new(&target_path)).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn get_auto_invoke_rules(profile_id: String) -> Result<Vec<AutoInvokeRule>, String> {
+    Profiles::get_auto_invoke_rules(&profile_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn update_auto_invoke_rules(profile_id: String, rules: Vec<AutoInvokeRule>) -> Result<Profile, String> {
+    Profiles::update_auto_invoke_rules(&profile_id, rules).map_err(|e| e.to_string())
 }
 
 // ============================================

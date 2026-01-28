@@ -6,7 +6,7 @@ This document describes the architecture of the Rhinolabs AI system for Claude C
 
 The system is composed of three independent assets that can be installed separately:
 
-### 1. CLI (`rhinolabs`)
+### 1. CLI (`rhinolabs-ai`)
 
 **Location**: `/cli/`
 
@@ -17,7 +17,7 @@ Standalone command-line tool for managing skills, profiles, and plugin configura
 cargo install --path cli
 
 # Or via Homebrew (when published)
-brew install rhinolabs/tap/rhinolabs
+brew install rhinolabs/tap/rhinolabs-ai
 ```
 
 **Commands**:
@@ -25,6 +25,7 @@ brew install rhinolabs/tap/rhinolabs
 - `rhinolabs-ai profile list|show|install|update|uninstall`
 - `rhinolabs-ai mcp list|add|remove|sync`
 - `rhinolabs-ai config show|set`
+- `rhinolabs-ai sync` - Sync configuration from GitHub
 
 **Alias**: `rlai` can be used as a short form (e.g., `rlai profile list`)
 
@@ -77,6 +78,30 @@ Tauri-based desktop application for visual management.
 
 Profiles organize skills into reusable bundles that can be installed at different scopes.
 
+### Profile Structure
+
+```rust
+pub struct Profile {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub profile_type: ProfileType,      // User | Project
+    pub skills: Vec<String>,            // Skill IDs
+    pub auto_invoke_rules: Vec<AutoInvokeRule>,  // When to load each skill
+    pub instructions: Option<String>,   // Custom instructions for CLAUDE.md
+    pub generate_copilot: bool,         // Generate .github/copilot-instructions.md
+    pub generate_agents: bool,          // Generate AGENTS.md as master
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+pub struct AutoInvokeRule {
+    pub skill_id: String,
+    pub trigger: String,       // "Editing .tsx/.jsx files"
+    pub description: String,   // "React 19 patterns and hooks"
+}
+```
+
 ### Profile Types
 
 #### User Profile (Main-Profile)
@@ -105,40 +130,130 @@ Profiles organize skills into reusable bundles that can be installed at differen
 ```
 <project-path>/
 ├── .claude-plugin/
-│   └── plugin.json   # Profile as plugin manifest
+│   └── plugin.json             # Profile as plugin manifest
 ├── .claude/
-│   └── skills/       # Skills from the profile
-├── CLAUDE.md         # Profile instructions (if defined)
-└── settings.json     # Profile settings (if defined)
+│   └── skills/                 # Skills from the profile
+├── .github/
+│   └── copilot-instructions.md # For GitHub Copilot (if enabled)
+├── CLAUDE.md                   # Generated with auto-invoke table
+├── AGENTS.md                   # Master file (if enabled)
+└── settings.json               # Profile settings (if defined)
 ```
 
-### Profile Installation Flow
+---
+
+## Multi-AI Support
+
+The system generates instruction files for multiple AI assistants from a single source.
+
+### File Generation Flow
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      rhinolabs-ai CLI                          │
-├─────────────────────────────────────────────────────────────┤
-│  rhinolabs-ai profile install --profile <id> [--path <dir>]    │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                   Profile Definition (GUI)                       │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │  Skills: [react-19, typescript, tailwind-4]               │  │
+│  │  Auto-invoke Rules:                                       │  │
+│  │    - react-19 → "Editing .tsx/.jsx"                       │  │
+│  │    - typescript → "Editing .ts files"                     │  │
+│  │  Instructions: "Follow corporate standards..."            │  │
+│  │  Generate: [x] Copilot  [x] AGENTS.md                     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
               ┌───────────────────────────────┐
-              │     Profile Type Check        │
+              │  rhinolabs-ai profile install  │
               └───────────────────────────────┘
-                     │              │
-            User Profile      Project Profile
-                     │              │
-                     ▼              ▼
-         ┌─────────────────┐  ┌──────────────────────┐
-         │  Install to     │  │  Install as Plugin   │
-         │  ~/.claude/     │  │  to <project-path>/  │
-         │                 │  │                      │
-         │  + Instructions │  │  + plugin.json       │
-         │  + Settings     │  │  + skills/           │
-         │  + Output Style │  │  + CLAUDE.md (opt)   │
-         │  + Skills       │  │  + settings (opt)    │
-         └─────────────────┘  └──────────────────────┘
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        ▼                     ▼                     ▼
+┌───────────────┐   ┌───────────────────┐   ┌─────────────────────┐
+│  CLAUDE.md    │   │ copilot-instr.md  │   │    AGENTS.md        │
+│  (Claude Code)│   │ (GitHub Copilot)  │   │ (Master/Reference)  │
+└───────────────┘   └───────────────────┘   └─────────────────────┘
 ```
+
+### CLAUDE.md Format (Generated)
+
+```markdown
+# Project Instructions
+
+> Auto-generated by rhinolabs-ai | Profile: react-stack
+> Run `rhinolabs-ai profile update` to regenerate
+
+## Auto-invoke Skills
+
+IMPORTANT: Load these skills based on context:
+
+| Context | Skill | Read First |
+|---------|-------|------------|
+| Editing .tsx/.jsx | react-19 | `.claude/skills/react-19/SKILL.md` |
+| Editing .ts | typescript | `.claude/skills/typescript/SKILL.md` |
+| Writing tests | playwright | `.claude/skills/playwright/SKILL.md` |
+
+## Project Standards
+
+[Custom instructions from profile here]
+
+## Available Skills
+
+Skills in `.claude/skills/`:
+- react-19: React 19 patterns
+- typescript: TypeScript guidelines
+- tailwind-4: Tailwind CSS v4
+
+---
+*Installed by rhinolabs-ai | Profile: react-stack*
+```
+
+### .github/copilot-instructions.md Format
+
+Same content as CLAUDE.md, adapted for GitHub Copilot:
+- Removes Claude-specific references
+- Adjusts skill paths for Copilot context
+
+### AGENTS.md Format (Optional Master)
+
+When `generate_agents` is enabled, AGENTS.md serves as the canonical source:
+- Used as reference for manual regeneration
+- Can be version-controlled separately
+- Useful for teams using multiple AI tools
+
+---
+
+## Auto-invoke Rules
+
+Auto-invoke rules tell AI assistants WHEN to load each skill based on context.
+
+### Rule Structure
+
+```json
+{
+  "skill_id": "react-19",
+  "trigger": "Editing .tsx/.jsx files",
+  "description": "React 19 patterns, hooks, Server Components"
+}
+```
+
+### Common Triggers
+
+| Trigger Pattern | Example Skills |
+|-----------------|----------------|
+| `Editing .tsx/.jsx files` | react-19 |
+| `Editing .ts files` | typescript |
+| `Editing Python files` | django-drf, pytest |
+| `Writing tests` | playwright, pytest |
+| `Working with styles` | tailwind-4 |
+| `API development` | zod-4, ai-sdk-5 |
+| `Any code change` | rhinolabs-security (Main-Profile) |
+
+### Inheritance
+
+When a Project Profile is installed:
+1. **Main-Profile rules** apply globally (from `~/.claude/`)
+2. **Project Profile rules** apply in project context
+3. Claude Code merges both automatically
 
 ---
 
@@ -187,7 +302,7 @@ Instructions for Claude...
 
 | File | Location | Purpose |
 |------|----------|---------|
-| `profiles.json` | `~/.config/rhinolabs-ai/` | Profile definitions |
+| `profiles.json` | `~/.config/rhinolabs-ai/` | Profile definitions with auto-invoke rules |
 | `.skills-config.json` | Plugin directory | Skill states |
 | `settings.json` | Plugin directory | Plugin settings |
 | `.mcp.json` | Plugin directory | MCP server config |
@@ -202,6 +317,41 @@ Claude Code automatically loads:
 
 ---
 
+## Profile Installation Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      rhinolabs-ai CLI                        │
+├─────────────────────────────────────────────────────────────┤
+│  rhinolabs-ai profile install <name> [--path <dir>]         │
+│                                                             │
+│  Options:                                                   │
+│    --no-copilot    Skip copilot-instructions.md generation │
+│    --no-agents     Skip AGENTS.md generation               │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │     Profile Type Check        │
+              └───────────────────────────────┘
+                     │              │
+            User Profile      Project Profile
+                     │              │
+                     ▼              ▼
+         ┌─────────────────┐  ┌──────────────────────────────┐
+         │  Install to     │  │  Install as Plugin           │
+         │  ~/.claude/     │  │  to <project-path>/          │
+         │                 │  │                              │
+         │  + Skills       │  │  + .claude-plugin/plugin.json│
+         │  + Instructions │  │  + .claude/skills/           │
+         │  + Settings     │  │  + CLAUDE.md (with auto-invoke)│
+         │  + Output Style │  │  + copilot-instructions.md   │
+         └─────────────────┘  │  + AGENTS.md (if enabled)    │
+                              └──────────────────────────────┘
+```
+
+---
+
 ## Development
 
 ### Core Library (`rhinolabs-core`)
@@ -210,7 +360,7 @@ Shared Rust library used by CLI and GUI.
 
 **Modules**:
 - `skills.rs` - Skill CRUD, remote fetching
-- `profiles.rs` - Profile management, installation
+- `profiles.rs` - Profile management, installation, file generation
 - `settings.rs` - Plugin settings
 - `instructions.rs` - CLAUDE.md management
 - `output_styles.rs` - Output style management
@@ -266,6 +416,7 @@ Lead Developer (GUI ONLY)
 ┌─────────────────────────────────┐
 │  1. Export current config:      │
 │     - profiles.json             │
+│       (includes auto-invoke)    │
 │     - skills/                   │
 │     - CLAUDE.md                 │
 │     - settings.json             │
@@ -288,7 +439,7 @@ Team Developer (CLI)
          │
          ▼
 ┌─────────────────────────────────┐
-│  rhinolabs-ai sync                 │
+│  rhinolabs-ai sync              │
 └─────────────────────────────────┘
          │
          ▼
@@ -309,7 +460,7 @@ Team Developer (CLI)
          ▼
 ┌─────────────────────────────────┐
 │  3. Ready! Use profiles:        │
-│  rhinolabs-ai profile install ...  │
+│  rhinolabs-ai profile install   │
 └─────────────────────────────────┘
 ```
 
@@ -322,8 +473,10 @@ rhinolabs-ai sync
 # Profile management
 rhinolabs-ai profile list
 rhinolabs-ai profile show <id>
-rhinolabs-ai profile install --profile main
-rhinolabs-ai profile install --profile react-stack --path ./project
+rhinolabs-ai profile install main
+rhinolabs-ai profile install react-stack
+rhinolabs-ai profile install react-stack --path ./project
+rhinolabs-ai profile install react-stack --no-copilot
 ```
 
 ### GUI Commands (Lead Developer Only)
@@ -353,11 +506,11 @@ Note: Team developers do NOT need GITHUB_TOKEN (only for read operations)
 
 ### Publishing Configuration Updates
 
-1. Make changes in GUI (profiles, skills, settings, etc.)
-2. Deploy: `rhinolabs-ai deploy --version X.X.X`
+1. Make changes in GUI (profiles, skills, auto-invoke rules, etc.)
+2. Deploy via GUI: Project → Deploy
 3. Team members run: `rhinolabs-ai sync`
 
 ---
 
 **Last Updated**: 2026-01-28
-**Version**: 2.1.0
+**Version**: 2.2.0
