@@ -83,20 +83,33 @@ graph LR
 
 ### Dashboard
 
-Overview of plugin status and quick actions.
+Overview of plugin status, configuration summary, and quick actions.
 
 ```mermaid
 graph TB
     subgraph "Dashboard"
-        STATUS[Installation Status]
-        VERSION[Version Info]
-        ACTIONS[Quick Actions]
+        STATUS[Plugin Status]
+        CONFIG[Configuration Summary]
+        PROJECT[Project Status]
+        DIAG[Diagnostics]
     end
 
-    STATUS --> INSTALLED{Installed?}
-    INSTALLED -->|Yes| SHOW_VERSION[Show Version]
-    INSTALLED -->|No| INSTALL_BTN[Install Button]
+    subgraph "Configuration Summary"
+        PROFILES[Profiles Count]
+        SKILLS[Skills Count]
+        ENABLED[Enabled Skills]
+    end
+
+    STATUS --> CONFIG
+    CONFIG --> PROJECT
+    PROJECT --> DIAG
 ```
+
+**Configuration Summary:**
+- Total profiles count (clickable, links to Profiles page)
+- Total skills count (clickable, links to Skills page)
+- Enabled skills count
+- Profile badges preview (first 4 profiles)
 
 ### Skills Management
 

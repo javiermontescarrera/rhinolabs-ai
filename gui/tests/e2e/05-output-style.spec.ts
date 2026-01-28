@@ -15,7 +15,7 @@ test.describe('Output Style Page - Read-Only View', () => {
   });
 
   test('should display output style page with heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /output style/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /output style/i, level: 1 })).toBeVisible();
   });
 
   test('should display page description', async ({ page }) => {

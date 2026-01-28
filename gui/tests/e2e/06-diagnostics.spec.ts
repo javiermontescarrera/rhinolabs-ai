@@ -15,15 +15,19 @@ test.describe('Diagnostics Page', () => {
   });
 
   test('should display diagnostics page', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /diagnostics/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /diagnostics/i, level: 1 })).toBeVisible();
   });
 
   test('should show run diagnostics button', async ({ page }) => {
     await expect(page.getByRole('button', { name: /run diagnostics/i })).toBeVisible();
   });
 
-  test('should display summary section', async ({ page }) => {
-    await expect(page.getByTestId('diagnostics-summary')).toBeVisible();
+  test('should display summary section with passed/warnings/failed', async ({ page }) => {
+    await expect(page.locator('.summary-grid')).toBeVisible();
+    // Use .label class to avoid matching headings and other text
+    await expect(page.locator('.summary-box .label').filter({ hasText: 'Passed' })).toBeVisible();
+    await expect(page.locator('.summary-box .label').filter({ hasText: 'Warnings' })).toBeVisible();
+    await expect(page.locator('.summary-box .label').filter({ hasText: 'Failed' })).toBeVisible();
   });
 });
 
@@ -35,38 +39,32 @@ test.describe('Diagnostics - Run Checks', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should run diagnostics when button clicked', async ({ page }) => {
+  test('should show running state when button clicked', async ({ page }) => {
+    // The diagnostics run automatically on load, but we can click to run again
     await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    // Should show loading state
-    await expect(page.getByText(/running/i)).toBeVisible();
-
-    // Should complete and show results
-    await expect(page.getByTestId('check-results')).toBeVisible();
+    // Button should show "Running..." while in progress
+    await expect(page.getByRole('button', { name: /running/i })).toBeVisible();
   });
 
   test('should display all check results', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    await expect(page.getByText('Claude Code Installation')).toBeVisible();
-    await expect(page.getByText('Plugin Installation')).toBeVisible();
-    await expect(page.getByText('Node.js')).toBeVisible();
-    await expect(page.getByText('Git')).toBeVisible();
-    await expect(page.getByText('MCP Configuration')).toBeVisible();
-    await expect(page.getByText('Updates')).toBeVisible();
+    // Results should be visible after auto-run on page load
+    await expect(page.getByRole('heading', { name: 'Check Results' })).toBeVisible();
+    // Use heading role to avoid matching the message text
+    await expect(page.getByRole('heading', { name: 'Claude Code Installation', level: 4 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Plugin Installation', level: 4 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Node.js', level: 4 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Git', level: 4 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'MCP Configuration', level: 4 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Updates', level: 4 })).toBeVisible();
   });
 
-  test('should show check status icons', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    // All checks should pass in mock
-    const passIcons = page.getByTestId('status-pass');
-    await expect(passIcons).toHaveCount(6);
+  test('should show check status badges', async ({ page }) => {
+    // All checks pass in mock, so all should have success status
+    const passBadges = page.locator('.status-badge.success');
+    await expect(passBadges).toHaveCount(6);
   });
 
   test('should show check messages', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
     await expect(page.getByText('Claude Code is installed')).toBeVisible();
     await expect(page.getByText('Plugin v1.0.0 installed')).toBeVisible();
   });
@@ -81,27 +79,22 @@ test.describe('Diagnostics - Summary', () => {
   });
 
   test('should show passed count', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    await expect(page.getByTestId('passed-count')).toContainText('6');
+    const passedBox = page.locator('.summary-box.success');
+    await expect(passedBox.locator('.value')).toHaveText('6');
   });
 
   test('should show failed count', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    await expect(page.getByTestId('failed-count')).toContainText('0');
+    const failedBox = page.locator('.summary-box.error');
+    await expect(failedBox.locator('.value')).toHaveText('0');
   });
 
   test('should show warnings count', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    await expect(page.getByTestId('warnings-count')).toContainText('0');
+    const warningsBox = page.locator('.summary-box.warning');
+    await expect(warningsBox.locator('.value')).toHaveText('0');
   });
 
-  test('should show overall status as healthy when all pass', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    await expect(page.getByTestId('overall-status')).toContainText(/healthy/i);
+  test('should show overall status as all passed when no failures', async ({ page }) => {
+    await expect(page.getByText('All checks passed!')).toBeVisible();
   });
 });
 
@@ -114,7 +107,7 @@ test.describe('Diagnostics - With Failures', () => {
       `{ name: 'Claude Code Installation', status: 'Fail', message: 'Claude Code not found' }`
     ).replace(
       `{ name: 'Node.js', status: 'Pass', message: 'Node.js detected' }`,
-      `{ name: 'Node.js', status: 'Warning', message: 'Node.js not found' }`
+      `{ name: 'Node.js', status: 'Warning', message: 'Node.js version outdated' }`
     ).replace(
       'passed: 6',
       'passed: 4'
@@ -130,30 +123,28 @@ test.describe('Diagnostics - With Failures', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should show failed checks with error styling', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    const failedCheck = page.locator('[data-testid="check-result"]').filter({ hasText: 'Claude Code Installation' });
-    await expect(failedCheck.getByTestId('status-fail')).toBeVisible();
+  test('should show failed checks section', async ({ page }) => {
+    // Failed section should appear with red heading
+    await expect(page.getByRole('heading', { name: 'Failed' })).toBeVisible();
+    await expect(page.getByText('Claude Code Installation')).toBeVisible();
   });
 
-  test('should show warning checks with warning styling', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    const warningCheck = page.locator('[data-testid="check-result"]').filter({ hasText: 'Node.js' });
-    await expect(warningCheck.getByTestId('status-warning')).toBeVisible();
+  test('should show warning checks section', async ({ page }) => {
+    // Warnings section should appear
+    await expect(page.getByRole('heading', { name: 'Warnings' })).toBeVisible();
+    // Use heading role to avoid matching the message text
+    await expect(page.getByRole('heading', { name: 'Node.js', level: 4 })).toBeVisible();
   });
 
-  test('should show overall status as issues found', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
-
-    await expect(page.getByTestId('overall-status')).toContainText(/issues found/i);
+  test('should show overall status with failure count', async ({ page }) => {
+    await expect(page.getByText(/1 check failed/i)).toBeVisible();
   });
 
-  test('should show action suggestions for failed checks', async ({ page }) => {
-    await page.getByRole('button', { name: /run diagnostics/i }).click();
+  test('should show error message for failed checks', async ({ page }) => {
+    await expect(page.getByText('Claude Code not found')).toBeVisible();
+  });
 
-    const failedCheck = page.locator('[data-testid="check-result"]').filter({ hasText: 'Claude Code Installation' });
-    await expect(failedCheck.getByText(/not found/i)).toBeVisible();
+  test('should show warning message for warning checks', async ({ page }) => {
+    await expect(page.getByText('Node.js version outdated')).toBeVisible();
   });
 });

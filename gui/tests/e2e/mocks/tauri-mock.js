@@ -45,9 +45,13 @@
     // MCP Config
     mcpConfig: {
       mcpServers: {
-        git: {
+        github: {
           command: 'npx',
-          args: ['-y', '@modelcontextprotocol/server-git'],
+          args: ['-y', '@modelcontextprotocol/server-github'],
+        },
+        filesystem: {
+          command: 'npx',
+          args: ['-y', '@modelcontextprotocol/server-filesystem'],
         },
       },
       settings: {
@@ -199,6 +203,19 @@
       // ----------------------------------------
       case 'get_status':
         return { ...state.status };
+
+      case 'get_project_status':
+        return {
+          isConfigured: true,
+          remoteUrl: 'https://github.com/rhinolabs/rhinolabs-ai',
+          hasGit: true,
+          currentBranch: 'main',
+          hasUncommittedChanges: false,
+          pluginVersion: '1.0.0',
+        };
+
+      case 'fetch_latest_release':
+        return '1.0.0';
 
       case 'install_plugin': {
         state.status.isInstalled = true;
@@ -642,7 +659,7 @@
         const newProfile = {
           ...input,
           profileType: 'project', // Always project for new profiles
-          skills: [],
+          skills: input.skills || [], // Accept skills during creation
           createdAt: now,
           updatedAt: now,
         };
@@ -759,6 +776,25 @@
       case 'uninstall_profile': {
         const { targetPath } = args;
         console.log(`[TauriMock] Uninstalling profile from ${targetPath}`);
+        return null;
+      }
+
+      case 'get_profile_instructions': {
+        const { profileId } = args;
+        const profile = state.profiles.find((p) => p.id === profileId);
+        if (!profile) {
+          throw new Error(`Profile "${profileId}" not found`);
+        }
+        // Return mock instructions content
+        if (profileId === 'main') {
+          return state.instructions.content;
+        }
+        return `# ${profile.name} Instructions\n\n## Skills Auto-invoke\n\n| Context | Skill |\n|---------|-------|\n| React components | react-patterns |\n`;
+      }
+
+      case 'open_profile_instructions_in_ide': {
+        const { profileId, ideCommand } = args;
+        console.log(`[TauriMock] Opening profile ${profileId} instructions in IDE: ${ideCommand}`);
         return null;
       }
 

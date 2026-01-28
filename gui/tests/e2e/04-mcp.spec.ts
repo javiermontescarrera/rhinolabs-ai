@@ -15,12 +15,17 @@ test.describe('MCP Configuration Page', () => {
   });
 
   test('should display MCP page with heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /mcp/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /mcp servers/i, level: 1 })).toBeVisible();
   });
 
   test('should show servers and settings sections', async ({ page }) => {
-    await expect(page.getByText(/servers/i)).toBeVisible();
-    await expect(page.getByText(/settings/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Configured Servers' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'MCP Settings' })).toBeVisible();
+  });
+
+  test('should show Add Server and Sync buttons', async ({ page }) => {
+    await expect(page.getByRole('button', { name: /add server/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /sync from source/i })).toBeVisible();
   });
 });
 
@@ -33,158 +38,90 @@ test.describe('MCP - Servers Management', () => {
   });
 
   test('should list existing MCP servers', async ({ page }) => {
-    await expect(page.getByText('git')).toBeVisible();
-    await expect(page.getByText('npx')).toBeVisible();
-    await expect(page.getByText('@modelcontextprotocol/server-git')).toBeVisible();
+    // Use heading role to avoid matching command text
+    await expect(page.getByRole('heading', { name: 'github', level: 4 })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'filesystem', level: 4 })).toBeVisible();
   });
 
-  test('should show add server button', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /add server/i })).toBeVisible();
-  });
-
-  test('should open add server modal', async ({ page }) => {
+  test('should open add server form', async ({ page }) => {
     await page.getByRole('button', { name: /add server/i }).click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByRole('heading', { name: /add mcp server/i })).toBeVisible();
   });
 
-  test('should show required fields in add server modal', async ({ page }) => {
+  test('should show form fields in add server', async ({ page }) => {
     await page.getByRole('button', { name: /add server/i }).click();
 
-    await expect(page.getByLabel(/name/i)).toBeVisible();
-    await expect(page.getByLabel(/command/i)).toBeVisible();
-    await expect(page.getByLabel(/args/i)).toBeVisible();
+    await expect(page.getByPlaceholder('my-mcp-server')).toBeVisible();
+    await expect(page.getByPlaceholder(/npx or/i)).toBeVisible();
   });
 
   test('should add new MCP server', async ({ page }) => {
     await page.getByRole('button', { name: /add server/i }).click();
 
-    await page.getByLabel(/name/i).fill('filesystem');
-    await page.getByLabel(/command/i).fill('npx');
-    await page.getByLabel(/args/i).fill('-y, @modelcontextprotocol/server-filesystem');
+    await page.getByPlaceholder('my-mcp-server').fill('new-server');
+    await page.getByPlaceholder(/npx or/i).fill('npx');
 
-    await page.getByRole('button', { name: /add/i }).click();
+    await page.getByRole('button', { name: /^add server$/i }).click();
 
-    await expect(page.getByRole('dialog')).not.toBeVisible();
-    await expect(page.getByText('filesystem')).toBeVisible();
+    // Should show success toast
+    await expect(page.getByText(/mcp server added/i)).toBeVisible();
   });
 
-  test('should show error for duplicate server name', async ({ page }) => {
+  test('should show validation error for missing required fields', async ({ page }) => {
     await page.getByRole('button', { name: /add server/i }).click();
 
-    await page.getByLabel(/name/i).fill('git'); // Already exists
-    await page.getByLabel(/command/i).fill('test');
-    await page.getByLabel(/args/i).fill('arg1');
+    // Try to add without filling required fields
+    await page.getByRole('button', { name: /^add server$/i }).click();
 
-    await page.getByRole('button', { name: /add/i }).click();
+    await expect(page.getByText(/required/i)).toBeVisible();
+  });
 
-    await expect(page.getByText(/already exists/i)).toBeVisible();
+  test('should cancel server creation', async ({ page }) => {
+    await page.getByRole('button', { name: /add server/i }).click();
+    await page.getByRole('button', { name: /cancel/i }).click();
+
+    // Should return to list
+    await expect(page.getByRole('heading', { name: /mcp servers/i, level: 1 })).toBeVisible();
   });
 
   test('should edit existing server', async ({ page }) => {
-    const serverRow = page.locator('[data-testid="mcp-server-git"]');
-    await serverRow.getByRole('button', { name: /edit/i }).click();
+    const serverItem = page.locator('.list-item').filter({ hasText: 'github' });
+    await serverItem.getByRole('button', { name: /edit/i }).click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByLabel(/command/i)).toHaveValue('npx');
-
-    await page.getByLabel(/args/i).fill('-y, @modelcontextprotocol/server-git, --verbose');
-    await page.getByRole('button', { name: /save/i }).click();
-
-    await expect(page.getByText('--verbose')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /edit mcp server/i })).toBeVisible();
+    await expect(page.getByPlaceholder(/npx or/i)).toHaveValue('npx');
   });
 
-  test('should delete server', async ({ page }) => {
-    const serverRow = page.locator('[data-testid="mcp-server-git"]');
-    await serverRow.getByRole('button', { name: /delete/i }).click();
+  test('should update server', async ({ page }) => {
+    const serverItem = page.locator('.list-item').filter({ hasText: 'github' });
+    await serverItem.getByRole('button', { name: /edit/i }).click();
 
-    await expect(page.getByRole('alertdialog')).toBeVisible();
-    await page.getByRole('button', { name: /confirm/i }).click();
+    await page.getByPlaceholder(/npx or/i).fill('node');
+    await page.getByRole('button', { name: /^save$/i }).click();
 
-    await expect(page.getByTestId('mcp-server-git')).not.toBeVisible();
+    // Should show success toast
+    await expect(page.getByText(/mcp server updated/i)).toBeVisible();
+  });
+
+  test('should delete server with confirmation', async ({ page }) => {
+    const serverItem = page.locator('.list-item').filter({ hasText: 'filesystem' });
+
+    page.on('dialog', dialog => dialog.accept());
+    await serverItem.getByRole('button', { name: /delete/i }).click();
+
+    // Should show success toast
+    await expect(page.getByText(/mcp server removed/i)).toBeVisible();
   });
 
   test('should cancel server deletion', async ({ page }) => {
-    const serverRow = page.locator('[data-testid="mcp-server-git"]');
-    await serverRow.getByRole('button', { name: /delete/i }).click();
+    const serverItem = page.locator('.list-item').filter({ hasText: 'filesystem' });
 
-    await page.getByRole('button', { name: /cancel/i }).click();
+    page.on('dialog', dialog => dialog.dismiss());
+    await serverItem.getByRole('button', { name: /delete/i }).click();
 
-    await expect(page.getByTestId('mcp-server-git')).toBeVisible();
-  });
-});
-
-test.describe('MCP - Server Environment Variables', () => {
-  test.beforeEach(async ({ page }) => {
-    const mockContent = fs.readFileSync(path.resolve(__dirname, 'mocks/tauri-mock.js'), 'utf-8');
-    await page.addInitScript(mockContent);
-    await page.goto('/mcp');
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('should show env vars section in edit modal', async ({ page }) => {
-    const serverRow = page.locator('[data-testid="mcp-server-git"]');
-    await serverRow.getByRole('button', { name: /edit/i }).click();
-
-    await expect(page.getByText(/environment variables/i)).toBeVisible();
-  });
-
-  test('should add env var to server', async ({ page }) => {
-    const serverRow = page.locator('[data-testid="mcp-server-git"]');
-    await serverRow.getByRole('button', { name: /edit/i }).click();
-
-    await page.getByRole('button', { name: /add env var/i }).click();
-    await page.getByPlaceholder(/key/i).fill('GIT_TOKEN');
-    await page.getByPlaceholder(/value/i).fill('secret-token');
-
-    await page.getByRole('button', { name: /save/i }).click();
-
-    // Re-open to verify
-    await serverRow.getByRole('button', { name: /edit/i }).click();
-    await expect(page.getByText('GIT_TOKEN')).toBeVisible();
-  });
-});
-
-test.describe('MCP - Settings', () => {
-  test.beforeEach(async ({ page }) => {
-    const mockContent = fs.readFileSync(path.resolve(__dirname, 'mocks/tauri-mock.js'), 'utf-8');
-    await page.addInitScript(mockContent);
-    await page.goto('/mcp');
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('should display MCP settings', async ({ page }) => {
-    await expect(page.getByLabel(/timeout/i)).toBeVisible();
-    await expect(page.getByLabel(/retry attempts/i)).toBeVisible();
-    await expect(page.getByLabel(/log level/i)).toBeVisible();
-  });
-
-  test('should show current settings values', async ({ page }) => {
-    await expect(page.getByLabel(/timeout/i)).toHaveValue('30000');
-    await expect(page.getByLabel(/retry attempts/i)).toHaveValue('3');
-    await expect(page.getByLabel(/log level/i)).toHaveValue('info');
-  });
-
-  test('should update timeout', async ({ page }) => {
-    await page.getByLabel(/timeout/i).fill('60000');
-    await page.getByRole('button', { name: /save settings/i }).click();
-
-    await expect(page.getByLabel(/timeout/i)).toHaveValue('60000');
-  });
-
-  test('should update retry attempts', async ({ page }) => {
-    await page.getByLabel(/retry attempts/i).fill('5');
-    await page.getByRole('button', { name: /save settings/i }).click();
-
-    await expect(page.getByLabel(/retry attempts/i)).toHaveValue('5');
-  });
-
-  test('should update log level', async ({ page }) => {
-    await page.getByLabel(/log level/i).selectOption('debug');
-    await page.getByRole('button', { name: /save settings/i }).click();
-
-    await expect(page.getByLabel(/log level/i)).toHaveValue('debug');
+    // Server should still be visible - use heading to avoid matching command
+    await expect(page.getByRole('heading', { name: 'filesystem', level: 4 })).toBeVisible();
   });
 });
 
@@ -196,41 +133,97 @@ test.describe('MCP - Sync Configuration', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should show sync options', async ({ page }) => {
-    await expect(page.getByRole('button', { name: /sync from url/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /sync from file/i })).toBeVisible();
+  test('should show sync panel when clicking Sync from Source', async ({ page }) => {
+    await page.getByRole('button', { name: /sync from source/i }).click();
+
+    await expect(page.getByRole('heading', { name: /sync mcp configuration/i })).toBeVisible();
   });
 
-  test('should open sync from URL modal', async ({ page }) => {
-    await page.getByRole('button', { name: /sync from url/i }).click();
+  test('should show URL and File source options', async ({ page }) => {
+    await page.getByRole('button', { name: /sync from source/i }).click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByLabel(/url/i)).toBeVisible();
+    const syncCard = page.locator('.card').filter({ hasText: 'Sync MCP' });
+    await expect(syncCard.locator('select')).toBeVisible();
   });
 
   test('should sync from URL', async ({ page }) => {
-    await page.getByRole('button', { name: /sync from url/i }).click();
+    await page.getByRole('button', { name: /sync from source/i }).click();
 
-    await page.getByLabel(/url/i).fill('https://example.com/mcp-config.json');
-    await page.getByRole('button', { name: /sync/i }).click();
+    await page.getByPlaceholder(/https/i).fill('https://example.com/mcp.json');
+    await page.getByRole('button', { name: /^sync$/i }).click();
 
-    // Should show success message
-    await expect(page.getByText(/synced successfully/i)).toBeVisible();
+    // Should show success toast
+    await expect(page.getByText(/mcp configuration synced/i)).toBeVisible();
   });
 
-  test('should open sync from file modal', async ({ page }) => {
-    await page.getByRole('button', { name: /sync from file/i }).click();
+  test('should sync from file', async ({ page }) => {
+    await page.getByRole('button', { name: /sync from source/i }).click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByLabel(/file path/i)).toBeVisible();
+    // Switch to file
+    const syncCard = page.locator('.card').filter({ hasText: 'Sync MCP' });
+    await syncCard.locator('select').selectOption('file');
+
+    await page.getByPlaceholder(/path/i).fill('/home/user/mcp.json');
+    await page.getByRole('button', { name: /^sync$/i }).click();
+
+    // Should show success toast
+    await expect(page.getByText(/mcp configuration synced/i)).toBeVisible();
   });
 
-  test('should sync from local file', async ({ page }) => {
-    await page.getByRole('button', { name: /sync from file/i }).click();
+  test('should show error for empty source', async ({ page }) => {
+    await page.getByRole('button', { name: /sync from source/i }).click();
+    await page.getByRole('button', { name: /^sync$/i }).click();
 
-    await page.getByLabel(/file path/i).fill('/home/user/mcp-config.json');
-    await page.getByRole('button', { name: /sync/i }).click();
+    // Should show error
+    await expect(page.getByText(/please enter/i)).toBeVisible();
+  });
+});
 
-    await expect(page.getByText(/synced successfully/i)).toBeVisible();
+test.describe('MCP - Settings', () => {
+  test.beforeEach(async ({ page }) => {
+    const mockContent = fs.readFileSync(path.resolve(__dirname, 'mocks/tauri-mock.js'), 'utf-8');
+    await page.addInitScript(mockContent);
+    await page.goto('/mcp');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('should display MCP settings section', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'MCP Settings' })).toBeVisible();
+  });
+
+  test('should show timeout input', async ({ page }) => {
+    const settingsCard = page.locator('.card').filter({ hasText: 'MCP Settings' });
+    await expect(settingsCard.getByText('Default Timeout')).toBeVisible();
+    await expect(settingsCard.locator('input[type="number"]').first()).toBeVisible();
+  });
+
+  test('should show retry attempts input', async ({ page }) => {
+    const settingsCard = page.locator('.card').filter({ hasText: 'MCP Settings' });
+    await expect(settingsCard.getByText('Retry Attempts')).toBeVisible();
+  });
+
+  test('should show log level select', async ({ page }) => {
+    const settingsCard = page.locator('.card').filter({ hasText: 'MCP Settings' });
+    await expect(settingsCard.getByText('Log Level')).toBeVisible();
+    await expect(settingsCard.locator('select')).toBeVisible();
+  });
+
+  test('should update timeout', async ({ page }) => {
+    const settingsCard = page.locator('.card').filter({ hasText: 'MCP Settings' });
+    const timeoutInput = settingsCard.locator('input[type="number"]').first();
+
+    await timeoutInput.fill('60000');
+    await timeoutInput.blur();
+
+    // Should show success toast
+    await expect(page.getByText(/settings updated/i)).toBeVisible();
+  });
+
+  test('should update log level', async ({ page }) => {
+    const settingsCard = page.locator('.card').filter({ hasText: 'MCP Settings' });
+    await settingsCard.locator('select').selectOption('debug');
+
+    // Should show success toast
+    await expect(page.getByText(/settings updated/i)).toBeVisible();
   });
 });

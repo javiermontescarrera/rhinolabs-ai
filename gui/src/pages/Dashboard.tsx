@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import type { ProjectStatus, DiagnosticReport, PluginManifest } from '../types';
+import type { ProjectStatus, DiagnosticReport, PluginManifest, Profile, Skill } from '../types';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -9,6 +9,8 @@ export default function Dashboard() {
   const [manifest, setManifest] = useState<PluginManifest | null>(null);
   const [diagnostics, setDiagnostics] = useState<DiagnosticReport | null>(null);
   const [latestRelease, setLatestRelease] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,12 +19,16 @@ export default function Dashboard() {
 
   async function loadData() {
     try {
-      const [projectStatus, diagReport] = await Promise.all([
+      const [projectStatus, diagReport, profileList, skillList] = await Promise.all([
         api.getProjectStatus(),
         api.runDiagnostics(),
+        api.listProfiles(),
+        api.listSkills(),
       ]);
       setStatus(projectStatus);
       setDiagnostics(diagReport);
+      setProfiles(profileList);
+      setSkills(skillList);
 
       // Try to load manifest
       try {
@@ -92,6 +98,46 @@ export default function Dashboard() {
             {manifest.description}
           </p>
         )}
+      </div>
+
+      {/* Profiles & Skills Summary */}
+      <div className="card">
+        <h2>Configuration</h2>
+        <div className="summary-grid">
+          <Link to="/profiles" className="summary-box" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+            <div className="value">{profiles.length}</div>
+            <div className="label">Profiles</div>
+          </Link>
+          <Link to="/skills" className="summary-box" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+            <div className="value">{skills.length}</div>
+            <div className="label">Skills</div>
+          </Link>
+          <Link to="/skills" className="summary-box" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+            <div className="value">{skills.filter(s => s.enabled).length}</div>
+            <div className="label">Enabled Skills</div>
+          </Link>
+        </div>
+        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {profiles.slice(0, 4).map(p => (
+            <span
+              key={p.id}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                background: p.profileType === 'user' ? '#10b981' : '#8b5cf6',
+                color: 'white',
+              }}
+            >
+              {p.name}
+            </span>
+          ))}
+          {profiles.length > 4 && (
+            <span style={{ padding: '4px 10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              +{profiles.length - 4} more
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Project Status */}

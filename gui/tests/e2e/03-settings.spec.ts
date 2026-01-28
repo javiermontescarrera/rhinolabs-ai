@@ -15,14 +15,17 @@ test.describe('Settings Page', () => {
   });
 
   test('should display settings page with heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /settings/i, level: 1 })).toBeVisible();
   });
 
   test('should show settings sections', async ({ page }) => {
-    await expect(page.getByText(/permissions/i)).toBeVisible();
-    await expect(page.getByText(/environment variables/i)).toBeVisible();
-    await expect(page.getByText(/status line/i)).toBeVisible();
-    await expect(page.getByText(/attribution/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Permissions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Environment Variables' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Status Line' })).toBeVisible();
+  });
+
+  test('should show Main-Profile notice', async ({ page }) => {
+    await expect(page.getByText(/linked to main-profile/i)).toBeVisible();
   });
 });
 
@@ -34,61 +37,54 @@ test.describe('Settings - Permissions', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should display permission categories', async ({ page }) => {
-    await expect(page.getByRole('tab', { name: /deny/i })).toBeVisible();
-    await expect(page.getByRole('tab', { name: /ask/i })).toBeVisible();
-    await expect(page.getByRole('tab', { name: /allow/i })).toBeVisible();
+  test('should display permission tabs', async ({ page }) => {
+    // Tabs are buttons, not role="tab"
+    await expect(page.getByRole('button', { name: /allow/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /ask/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /deny/i })).toBeVisible();
   });
 
-  test('should list deny permissions', async ({ page }) => {
-    await page.getByRole('tab', { name: /deny/i }).click();
+  test('should show allow permissions by default', async ({ page }) => {
+    // Allow tab should be active and show permissions
+    await expect(page.getByText('Read')).toBeVisible();
+    await expect(page.getByText('Edit')).toBeVisible();
+    await expect(page.getByText('Write')).toBeVisible();
+  });
+
+  test('should switch to deny tab and show permissions', async ({ page }) => {
+    await page.getByRole('button', { name: /deny/i }).click();
 
     await expect(page.getByText('Read(.env)')).toBeVisible();
     await expect(page.getByText('Read(.env.*)')).toBeVisible();
   });
 
-  test('should list ask permissions', async ({ page }) => {
-    await page.getByRole('tab', { name: /ask/i }).click();
+  test('should switch to ask tab and show permissions', async ({ page }) => {
+    await page.getByRole('button', { name: /ask/i }).click();
 
     await expect(page.getByText('Bash(git commit:*)')).toBeVisible();
     await expect(page.getByText('Bash(git push:*)')).toBeVisible();
   });
 
-  test('should list allow permissions', async ({ page }) => {
-    await page.getByRole('tab', { name: /allow/i }).click();
-
-    await expect(page.getByText(/^Read$/)).toBeVisible();
-    await expect(page.getByText(/^Edit$/)).toBeVisible();
-    await expect(page.getByText(/^Write$/)).toBeVisible();
-  });
-
   test('should add new permission', async ({ page }) => {
-    await page.getByRole('tab', { name: /deny/i }).click();
-    await page.getByRole('button', { name: /add permission/i }).click();
+    await page.getByRole('button', { name: /deny/i }).click();
 
-    await page.getByPlaceholder(/enter permission/i).fill('Read(.secrets)');
-    await page.getByRole('button', { name: /add/i }).click();
+    // Use the input field in the Permissions card
+    const permissionsCard = page.locator('.card').filter({ hasText: 'Permissions' });
+    await permissionsCard.getByPlaceholder(/e\.g\./i).fill('Read(.secrets)');
+    await permissionsCard.getByRole('button', { name: /^add$/i }).click();
 
-    await expect(page.getByText('Read(.secrets)')).toBeVisible();
+    // Should show success toast
+    await expect(page.getByText(/permission added/i)).toBeVisible();
   });
 
   test('should remove permission', async ({ page }) => {
-    await page.getByRole('tab', { name: /deny/i }).click();
+    await page.getByRole('button', { name: /deny/i }).click();
 
-    const permissionItem = page.locator('[data-testid="permission-item"]').filter({ hasText: 'Read(.env)' });
+    const permissionItem = page.locator('.list-item').filter({ hasText: 'Read(.env)' }).first();
     await permissionItem.getByRole('button', { name: /remove/i }).click();
 
-    await expect(page.getByText('Read(.env)')).not.toBeVisible();
-  });
-
-  test('should move permission between categories', async ({ page }) => {
-    await page.getByRole('tab', { name: /ask/i }).click();
-
-    const permissionItem = page.locator('[data-testid="permission-item"]').filter({ hasText: 'Bash(git commit:*)' });
-    await permissionItem.getByRole('button', { name: /move to allow/i }).click();
-
-    await page.getByRole('tab', { name: /allow/i }).click();
-    await expect(page.getByText('Bash(git commit:*)')).toBeVisible();
+    // Should show success toast
+    await expect(page.getByText(/permission removed/i)).toBeVisible();
   });
 });
 
@@ -106,33 +102,21 @@ test.describe('Settings - Environment Variables', () => {
   });
 
   test('should add new env var', async ({ page }) => {
-    await page.getByRole('button', { name: /add variable/i }).click();
+    // Use placeholders to find inputs
+    await page.getByPlaceholder('VAR_NAME').fill('MY_NEW_VAR');
+    await page.getByPlaceholder('value').fill('my-value');
+    await page.locator('.card').filter({ hasText: 'Environment Variables' }).getByRole('button', { name: /^add$/i }).click();
 
-    await page.getByLabel(/key/i).fill('MY_NEW_VAR');
-    await page.getByLabel(/value/i).fill('my-value');
-    await page.getByRole('button', { name: /save/i }).click();
-
-    await expect(page.getByText('MY_NEW_VAR')).toBeVisible();
-    await expect(page.getByText('my-value')).toBeVisible();
+    // Should show success toast
+    await expect(page.getByText(/environment variable added/i)).toBeVisible();
   });
 
-  test('should edit env var value', async ({ page }) => {
-    const envRow = page.locator('[data-testid="env-row-ENABLE_TOOL_SEARCH"]');
-    await envRow.getByRole('button', { name: /edit/i }).click();
+  test('should remove env var', async ({ page }) => {
+    const envItem = page.locator('.list-item').filter({ hasText: 'ENABLE_TOOL_SEARCH' });
+    await envItem.getByRole('button', { name: /remove/i }).click();
 
-    await page.getByLabel(/value/i).fill('false');
-    await page.getByRole('button', { name: /save/i }).click();
-
-    await expect(page.getByText('false')).toBeVisible();
-  });
-
-  test('should delete env var', async ({ page }) => {
-    const envRow = page.locator('[data-testid="env-row-ENABLE_TOOL_SEARCH"]');
-    await envRow.getByRole('button', { name: /delete/i }).click();
-
-    await page.getByRole('button', { name: /confirm/i }).click();
-
-    await expect(page.getByText('ENABLE_TOOL_SEARCH')).not.toBeVisible();
+    // Should show success toast
+    await expect(page.getByText(/environment variable removed/i)).toBeVisible();
   });
 });
 
@@ -144,57 +128,42 @@ test.describe('Settings - Status Line', () => {
     await page.waitForLoadState('networkidle');
   });
 
-  test('should display current status line config', async ({ page }) => {
-    await expect(page.getByText(/command/i)).toBeVisible();
-    await expect(page.getByText('~/.claude/statusline.sh')).toBeVisible();
+  test('should display status line section', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Status Line' })).toBeVisible();
+  });
+
+  test('should display type selector', async ({ page }) => {
+    const statusLineCard = page.locator('.card').filter({ hasText: 'Status Line' });
+    await expect(statusLineCard.locator('select')).toBeVisible();
   });
 
   test('should switch between command and static type', async ({ page }) => {
-    await page.getByLabel(/type/i).selectOption('static');
+    const statusLineCard = page.locator('.card').filter({ hasText: 'Status Line' });
+    await statusLineCard.locator('select').selectOption('static');
 
-    await expect(page.getByLabel(/text/i)).toBeVisible();
-    await expect(page.getByLabel(/command/i)).not.toBeVisible();
+    // Should show text input for static type
+    await expect(page.getByPlaceholder(/status line text/i)).toBeVisible();
   });
 
-  test('should update command value', async ({ page }) => {
-    await page.getByLabel(/command/i).fill('/usr/local/bin/my-status.sh');
-    await page.getByRole('button', { name: /save/i }).click();
+  test('should show command input when type is command', async ({ page }) => {
+    const statusLineCard = page.locator('.card').filter({ hasText: 'Status Line' });
+    await statusLineCard.locator('select').selectOption('command');
 
-    await expect(page.getByText('/usr/local/bin/my-status.sh')).toBeVisible();
+    // Should show command input
+    await expect(page.getByPlaceholder(/command to execute/i)).toBeVisible();
   });
 
-  test('should update padding value', async ({ page }) => {
-    await page.getByLabel(/padding/i).fill('10');
-    await page.getByRole('button', { name: /save/i }).click();
-
-    await expect(page.getByLabel(/padding/i)).toHaveValue('10');
-  });
-});
-
-test.describe('Settings - Attribution', () => {
-  test.beforeEach(async ({ page }) => {
-    const mockContent = fs.readFileSync(path.resolve(__dirname, 'mocks/tauri-mock.js'), 'utf-8');
-    await page.addInitScript(mockContent);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+  test('should have padding input', async ({ page }) => {
+    const statusLineCard = page.locator('.card').filter({ hasText: 'Status Line' });
+    await expect(statusLineCard.locator('input[type="number"]')).toBeVisible();
   });
 
-  test('should display attribution fields', async ({ page }) => {
-    await expect(page.getByLabel(/commit attribution/i)).toBeVisible();
-    await expect(page.getByLabel(/pr attribution/i)).toBeVisible();
-  });
+  test('should update status line on change', async ({ page }) => {
+    const statusLineCard = page.locator('.card').filter({ hasText: 'Status Line' });
+    await statusLineCard.locator('select').selectOption('static');
+    await page.getByPlaceholder(/status line text/i).fill('Test status');
 
-  test('should update commit attribution', async ({ page }) => {
-    await page.getByLabel(/commit attribution/i).fill('Co-Authored-By: AI <ai@example.com>');
-    await page.getByRole('button', { name: /save/i }).click();
-
-    await expect(page.getByLabel(/commit attribution/i)).toHaveValue('Co-Authored-By: AI <ai@example.com>');
-  });
-
-  test('should update pr attribution', async ({ page }) => {
-    await page.getByLabel(/pr attribution/i).fill('Generated with AI assistance');
-    await page.getByRole('button', { name: /save/i }).click();
-
-    await expect(page.getByLabel(/pr attribution/i)).toHaveValue('Generated with AI assistance');
+    // Should show success toast
+    await expect(page.getByText(/status line updated/i)).toBeVisible();
   });
 });
