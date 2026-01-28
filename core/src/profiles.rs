@@ -1073,12 +1073,26 @@ This profile generates:
     // ============================================
 
     /// Get the path for a profile's instructions file
+    /// For "main" profile, uses the same path as InstructionsManager (CLAUDE.md)
+    /// For other profiles, uses ~/.config/rhinolabs-ai/profile-instructions/{id}.md
     pub fn get_instructions_path(profile_id: &str) -> Result<PathBuf> {
-        Ok(Self::config_dir()?.join("profile-instructions").join(format!("{}.md", profile_id)))
+        if profile_id == "main" {
+            // Main profile shares the same CLAUDE.md as InstructionsManager
+            InstructionsManager::get_path()
+        } else {
+            Ok(Self::config_dir()?.join("profile-instructions").join(format!("{}.md", profile_id)))
+        }
     }
 
     /// Get profile instructions (from file if exists, otherwise from profile config)
+    /// For "main" profile, uses InstructionsManager directly
     pub fn get_instructions(profile_id: &str) -> Result<String> {
+        if profile_id == "main" {
+            // Main profile uses InstructionsManager
+            let instructions = InstructionsManager::get()?;
+            return Ok(instructions.content);
+        }
+
         let path = Self::get_instructions_path(profile_id)?;
         if path.exists() {
             Ok(fs::read_to_string(&path)?)
@@ -1090,24 +1104,35 @@ This profile generates:
     }
 
     /// Update profile instructions (writes to file and updates profile config)
+    /// For "main" profile, uses InstructionsManager directly
     pub fn update_instructions(profile_id: &str, content: &str) -> Result<()> {
         // Verify profile exists
         Self::get(profile_id)?
             .ok_or_else(|| RhinolabsError::ConfigError(format!("Profile '{}' not found", profile_id)))?;
 
-        // Write to file
-        let path = Self::get_instructions_path(profile_id)?;
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
-        }
-        fs::write(&path, content)?;
+        if profile_id == "main" {
+            // Main profile uses InstructionsManager
+            if content.trim().is_empty() {
+                return Err(RhinolabsError::ConfigError(
+                    "Instructions content cannot be empty".into()
+                ));
+            }
+            InstructionsManager::update(content)?;
+        } else {
+            // Other profiles use their own file
+            let path = Self::get_instructions_path(profile_id)?;
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::write(&path, content)?;
 
-        // Update profile config
-        let mut config = Self::load_config()?;
-        if let Some(profile) = config.profiles.iter_mut().find(|p| p.id == profile_id) {
-            profile.instructions = if content.is_empty() { None } else { Some(content.to_string()) };
-            profile.updated_at = chrono::Utc::now().to_rfc3339();
-            Self::save_config(&config)?;
+            // Update profile config
+            let mut config = Self::load_config()?;
+            if let Some(profile) = config.profiles.iter_mut().find(|p| p.id == profile_id) {
+                profile.instructions = if content.is_empty() { None } else { Some(content.to_string()) };
+                profile.updated_at = chrono::Utc::now().to_rfc3339();
+                Self::save_config(&config)?;
+            }
         }
 
         Ok(())

@@ -7,7 +7,6 @@ import OutputStyle from "./pages/OutputStyle";
 import Mcp from "./pages/Mcp";
 import Skills from "./pages/Skills";
 import Profiles from "./pages/Profiles";
-import Instructions from "./pages/Instructions";
 import Diagnostics from "./pages/Diagnostics";
 import Release from "./pages/Release";
 import NotFound from "./pages/NotFound";
@@ -37,13 +36,8 @@ function App() {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/mcp" onClick={() => setSidebarOpen(false)}>
-              MCP
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/instructions" onClick={() => setSidebarOpen(false)}>
-              Instructions
+            <NavLink to="/profiles" onClick={() => setSidebarOpen(false)}>
+              Profiles
             </NavLink>
           </li>
           <li>
@@ -52,8 +46,8 @@ function App() {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/settings" onClick={() => setSidebarOpen(false)}>
-              Settings
+            <NavLink to="/mcp" onClick={() => setSidebarOpen(false)}>
+              MCP
             </NavLink>
           </li>
           <li>
@@ -62,8 +56,8 @@ function App() {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/profiles" onClick={() => setSidebarOpen(false)}>
-              Profiles
+            <NavLink to="/settings" onClick={() => setSidebarOpen(false)}>
+              Settings
             </NavLink>
           </li>
           <li>
@@ -82,12 +76,11 @@ function App() {
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/output-style" element={<OutputStyle />} />
-          <Route path="/mcp" element={<Mcp />} />
-          <Route path="/skills" element={<Skills />} />
           <Route path="/profiles" element={<Profiles />} />
-          <Route path="/instructions" element={<Instructions />} />
+          <Route path="/skills" element={<Skills />} />
+          <Route path="/mcp" element={<Mcp />} />
+          <Route path="/output-style" element={<OutputStyle />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/diagnostics" element={<Diagnostics />} />
           <Route path="/release" element={<Release />} />
           <Route path="*" element={<NotFound />} />
