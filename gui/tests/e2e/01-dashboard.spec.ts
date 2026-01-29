@@ -60,12 +60,6 @@ test.describe('Dashboard - Configuration Summary', () => {
     await expect(enabledBox).toBeVisible();
   });
 
-  test('should display profile badges', async ({ page }) => {
-    // Should show first 4 profiles as badges
-    await expect(page.getByText('Main Profile', { exact: true })).toBeVisible();
-    await expect(page.getByText('React 19 Stack', { exact: true })).toBeVisible();
-  });
-
   test('should navigate to profiles page when clicking profiles count', async ({ page }) => {
     const profilesLink = page.locator('a.summary-box').filter({ hasText: 'Profiles' });
     await profilesLink.click();

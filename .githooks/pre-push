@@ -1,0 +1,21 @@
+#!/bin/bash
+
+echo "🧪 Running all tests before push..."
+echo ""
+
+# Run all tests using Makefile
+make test
+
+# Capture exit code
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "❌ PUSH BLOCKED: Tests failed!"
+    echo "   Fix the failing tests before pushing."
+    exit 1
+fi
+
+echo ""
+echo "✅ All tests passed. Proceeding with push..."
+exit 0

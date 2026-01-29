@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import type { Profile, ProfileType, CreateProfileInput, UpdateProfileInput, Skill, IdeInfo } from '../types';
+import type { Profile, ProfileType, CreateProfileInput, UpdateProfileInput, Skill, IdeInfo, PermissionConfig, StatusLineConfig, OutputStyle } from '../types';
 import toast from 'react-hot-toast';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+
+type PermissionType = 'deny' | 'ask' | 'allow';
 
 const PROFILE_TYPE_COLORS: Record<ProfileType, string> = {
   user: '#10b981',
@@ -18,7 +20,7 @@ const SCROLLABLE_LIST_STYLE: React.CSSProperties = {
   background: 'var(--bg-primary)',
 };
 
-type EditSection = 'basic' | 'skills' | 'instructions';
+type EditSection = 'basic' | 'instructions' | 'skills' | 'settings' | 'output-style';
 
 export default function Profiles() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -46,6 +48,20 @@ export default function Profiles() {
   // Instructions state (in edit mode)
   const [instructionsContent, setInstructionsContent] = useState<string>('');
   const [instructionsLoading, setInstructionsLoading] = useState(false);
+
+  // Settings state (for main profile only)
+  const [permissions, setPermissions] = useState<PermissionConfig | null>(null);
+  const [statusLine, setStatusLine] = useState<StatusLineConfig | null>(null);
+  const [envVars, setEnvVars] = useState<Record<string, string>>({});
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [activePermissionTab, setActivePermissionTab] = useState<PermissionType>('allow');
+  const [newPermissionValue, setNewPermissionValue] = useState('');
+  const [newEnvKey, setNewEnvKey] = useState('');
+  const [newEnvValue, setNewEnvValue] = useState('');
+
+  // Output Style state (for main profile only)
+  const [outputStyle, setOutputStyle] = useState<OutputStyle | null>(null);
+  const [outputStyleLoading, setOutputStyleLoading] = useState(false);
 
   // Computed values
   const categories = [...new Set(skills.map(s => s.category))].sort();
@@ -165,6 +181,12 @@ export default function Profiles() {
     } finally {
       setInstructionsLoading(false);
     }
+
+    // Load settings and output style for main profile
+    if (profile.id === 'main') {
+      loadSettings();
+      loadOutputStyle();
+    }
   }
 
   function closeEdit() {
@@ -245,6 +267,118 @@ export default function Profiles() {
   }
 
   // ============================================
+  // Settings (main profile only)
+  // ============================================
+
+  async function loadSettings() {
+    setSettingsLoading(true);
+    try {
+      const [perms, status, env] = await Promise.all([
+        api.getPermissions(),
+        api.getStatusLine(),
+        api.getEnvVars(),
+      ]);
+      setPermissions(perms);
+      setStatusLine(status);
+      setEnvVars(env);
+    } catch (err) {
+      toast.error('Failed to load settings');
+    } finally {
+      setSettingsLoading(false);
+    }
+  }
+
+  async function handleAddPermission() {
+    if (!newPermissionValue.trim()) return;
+    try {
+      await api.addPermission(activePermissionTab, newPermissionValue);
+      toast.success('Permission added');
+      setNewPermissionValue('');
+      loadSettings();
+    } catch (err) {
+      toast.error('Failed to add permission');
+    }
+  }
+
+  async function handleRemovePermission(type: PermissionType, value: string) {
+    try {
+      await api.removePermission(type, value);
+      toast.success('Permission removed');
+      loadSettings();
+    } catch (err) {
+      toast.error('Failed to remove permission');
+    }
+  }
+
+  async function handleUpdateStatusLine(updates: Partial<StatusLineConfig>) {
+    if (!statusLine) return;
+    const updated = { ...statusLine, ...updates };
+    try {
+      await api.updateStatusLine(updated);
+      setStatusLine(updated);
+      toast.success('Status line updated');
+    } catch (err) {
+      toast.error('Failed to update status line');
+    }
+  }
+
+  async function handleAddEnvVar() {
+    if (!newEnvKey.trim()) return;
+    try {
+      await api.setEnvVar(newEnvKey, newEnvValue);
+      toast.success('Environment variable added');
+      setNewEnvKey('');
+      setNewEnvValue('');
+      loadSettings();
+    } catch (err) {
+      toast.error('Failed to add environment variable');
+    }
+  }
+
+  async function handleRemoveEnvVar(key: string) {
+    try {
+      await api.removeEnvVar(key);
+      toast.success('Environment variable removed');
+      loadSettings();
+    } catch (err) {
+      toast.error('Failed to remove environment variable');
+    }
+  }
+
+  // ============================================
+  // Output Style (main profile only)
+  // ============================================
+
+  async function loadOutputStyle() {
+    setOutputStyleLoading(true);
+    try {
+      const active = await api.getActiveOutputStyle();
+      setOutputStyle(active);
+    } catch {
+      setOutputStyle(null);
+    } finally {
+      setOutputStyleLoading(false);
+    }
+  }
+
+  async function handleOpenOutputStyleInIde() {
+    if (!outputStyle) {
+      toast.error('No output style to edit');
+      return;
+    }
+    if (availableIdes.length === 0) {
+      toast.error('No IDE available. Install VS Code, Cursor, or Zed.');
+      return;
+    }
+    try {
+      await api.openOutputStyleInIde(outputStyle.id, availableIdes[0].command);
+      toast.success('Opened in ' + availableIdes[0].name);
+    } catch (err) {
+      toast.error('Failed to open in IDE');
+    }
+  }
+
+  // ============================================
   // Render
   // ============================================
 
@@ -302,6 +436,22 @@ export default function Profiles() {
           >
             Skills ({assignedSkills.size})
           </button>
+          {!creating && editing?.id === 'main' && (
+            <button
+              className={`tab ${activeSection === 'settings' ? 'active' : ''}`}
+              onClick={() => setActiveSection('settings')}
+            >
+              Settings
+            </button>
+          )}
+          {!creating && editing?.id === 'main' && (
+            <button
+              className={`tab ${activeSection === 'output-style' ? 'active' : ''}`}
+              onClick={() => setActiveSection('output-style')}
+            >
+              Output Style
+            </button>
+          )}
         </div>
 
         {/* Basic Info Section */}
@@ -493,6 +643,279 @@ export default function Profiles() {
                   {instructionsContent || '# No instructions yet\n\nClick "Edit in IDE" to create instructions.'}
                 </SyntaxHighlighter>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Settings Section (main profile only) */}
+        {!creating && editing?.id === 'main' && activeSection === 'settings' && (
+          <div>
+            {settingsLoading ? (
+              <div className="loading">Loading settings...</div>
+            ) : (
+              <>
+                {/* Permissions */}
+                <div className="card" style={{ marginBottom: '16px' }}>
+                  <h3>Permissions</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    Control what actions Claude Code can perform
+                  </p>
+
+                  {/* Tabs */}
+                  <div style={{ display: 'flex', gap: '0', marginBottom: '1rem', borderBottom: '2px solid var(--border)' }}>
+                    {(['allow', 'ask', 'deny'] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActivePermissionTab(tab)}
+                        style={{
+                          padding: '0.75rem 1.5rem',
+                          background: activePermissionTab === tab ? 'var(--bg-secondary)' : 'transparent',
+                          border: 'none',
+                          borderBottom: activePermissionTab === tab ? '2px solid var(--accent)' : '2px solid transparent',
+                          marginBottom: '-2px',
+                          color: activePermissionTab === tab ? 'var(--text-primary)' : 'var(--text-secondary)',
+                          cursor: 'pointer',
+                          fontWeight: activePermissionTab === tab ? '600' : '400',
+                          textTransform: 'capitalize',
+                          transition: 'all 0.2s',
+                        }}
+                      >
+                        {tab} ({permissions?.[tab]?.length || 0})
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Scrollable list */}
+                  <div style={{
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    marginBottom: '1rem',
+                    border: '1px solid var(--border)',
+                    borderRadius: '6px',
+                    background: 'var(--bg-primary)',
+                  }}>
+                    {permissions?.[activePermissionTab]?.length ? (
+                      permissions[activePermissionTab].map((perm, i) => (
+                        <div key={i} className="list-item" style={{ margin: 0, borderRadius: 0, borderBottom: '1px solid var(--border)' }}>
+                          <div className="item-info">
+                            <code>{perm}</code>
+                          </div>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRemovePermission(activePermissionTab, perm)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', padding: '1.5rem', textAlign: 'center' }}>
+                        No {activePermissionTab} permissions configured
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Add permission */}
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                    <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
+                      <label>Add to {activePermissionTab}</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Bash(git*)"
+                        value={newPermissionValue}
+                        onChange={(e) => setNewPermissionValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddPermission()}
+                      />
+                    </div>
+                    <button className="btn btn-primary" onClick={handleAddPermission}>
+                      Add
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Line */}
+                <div className="card" style={{ marginBottom: '16px' }}>
+                  <h3>Status Line</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    Configure the status line display in Claude Code
+                  </p>
+
+                  <div className="form-group">
+                    <label>Type</label>
+                    <select
+                      value={statusLine?.type ?? 'static'}
+                      onChange={(e) => handleUpdateStatusLine({ type: e.target.value as 'command' | 'static' })}
+                    >
+                      <option value="static">Static Text</option>
+                      <option value="command">Command Output</option>
+                    </select>
+                  </div>
+
+                  {statusLine?.type === 'static' ? (
+                    <div className="form-group">
+                      <label>Text</label>
+                      <input
+                        type="text"
+                        value={statusLine?.text ?? ''}
+                        onChange={(e) => handleUpdateStatusLine({ text: e.target.value })}
+                        placeholder="Status line text"
+                      />
+                    </div>
+                  ) : (
+                    <div className="form-group">
+                      <label>Command</label>
+                      <input
+                        type="text"
+                        value={statusLine?.command ?? ''}
+                        onChange={(e) => handleUpdateStatusLine({ command: e.target.value })}
+                        placeholder="Command to execute"
+                      />
+                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Padding</label>
+                    <input
+                      type="number"
+                      value={statusLine?.padding ?? 0}
+                      onChange={(e) => handleUpdateStatusLine({ padding: parseInt(e.target.value) || 0 })}
+                      min={0}
+                      max={20}
+                    />
+                  </div>
+                </div>
+
+                {/* Environment Variables */}
+                <div className="card">
+                  <h3>Environment Variables</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    Set environment variables for Claude Code sessions
+                  </p>
+
+                  {Object.entries(envVars).length > 0 ? (
+                    Object.entries(envVars).map(([key, value]) => (
+                      <div key={key} className="list-item">
+                        <div className="item-info">
+                          <h4>{key}</h4>
+                          <p>{value}</p>
+                        </div>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleRemoveEnvVar(key)}>
+                          Remove
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '1rem' }}>
+                      No environment variables configured
+                    </p>
+                  )}
+
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div className="form-group" style={{ marginBottom: 0, minWidth: '150px' }}>
+                      <label>Key</label>
+                      <input
+                        type="text"
+                        placeholder="VAR_NAME"
+                        value={newEnvKey}
+                        onChange={(e) => setNewEnvKey(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0, flex: 1, minWidth: '200px' }}>
+                      <label>Value</label>
+                      <input
+                        type="text"
+                        placeholder="value"
+                        value={newEnvValue}
+                        onChange={(e) => setNewEnvValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddEnvVar()}
+                      />
+                    </div>
+                    <button className="btn btn-primary" onClick={handleAddEnvVar}>
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Output Style Section (main profile only) */}
+        {!creating && editing?.id === 'main' && activeSection === 'output-style' && (
+          <div>
+            {outputStyleLoading ? (
+              <div className="loading">Loading output style...</div>
+            ) : (
+              <>
+                <div className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                    <div>
+                      <h3 style={{ marginBottom: '0.25rem' }}>{outputStyle?.name || 'No style configured'}</h3>
+                      {outputStyle?.description && (
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                          {outputStyle.description}
+                        </p>
+                      )}
+                      {outputStyle && (
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginTop: '0.5rem' }}>
+                          Keep coding instructions: <strong>{outputStyle.keepCodingInstructions ? 'Yes' : 'No'}</strong>
+                        </p>
+                      )}
+                    </div>
+                    <button className="btn btn-primary" onClick={handleOpenOutputStyleInIde}>
+                      Edit
+                    </button>
+                  </div>
+
+                  <div style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '0.5rem',
+                    overflow: 'auto',
+                    maxHeight: '400px',
+                  }}>
+                    <SyntaxHighlighter
+                      language="markdown"
+                      style={vscDarkPlus}
+                      showLineNumbers
+                      customStyle={{
+                        margin: 0,
+                        borderRadius: '0.5rem',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {outputStyle?.content || '# No content yet\n\nClick "Edit" to create your output style.'}
+                    </SyntaxHighlighter>
+                  </div>
+                </div>
+
+                {/* Quick Reference */}
+                <div className="card">
+                  <h3>Quick Reference</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    Common sections to include in your output style:
+                  </p>
+                  <div className="grid-2">
+                    <div>
+                      <h4 style={{ marginBottom: '0.5rem' }}>Structure</h4>
+                      <ul style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', paddingLeft: '1.25rem' }}>
+                        <li># Personality - Overall character</li>
+                        <li># Tone - How to communicate</li>
+                        <li># Language - Response language</li>
+                        <li># Behavior - Specific actions</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 style={{ marginBottom: '0.5rem' }}>Tips</h4>
+                      <ul style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', paddingLeft: '1.25rem' }}>
+                        <li>Be specific with tone descriptors</li>
+                        <li>Include example phrases if needed</li>
+                        <li>Define when to use formal/informal</li>
+                        <li>Specify preferred terminology</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         )}

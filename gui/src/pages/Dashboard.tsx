@@ -117,27 +117,6 @@ export default function Dashboard() {
             <div className="label">Enabled Skills</div>
           </Link>
         </div>
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {profiles.slice(0, 4).map(p => (
-            <span
-              key={p.id}
-              style={{
-                padding: '4px 10px',
-                borderRadius: '4px',
-                fontSize: '12px',
-                background: p.profileType === 'user' ? '#10b981' : '#8b5cf6',
-                color: 'white',
-              }}
-            >
-              {p.name}
-            </span>
-          ))}
-          {profiles.length > 4 && (
-            <span style={{ padding: '4px 10px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-              +{profiles.length - 4} more
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Project Status */}

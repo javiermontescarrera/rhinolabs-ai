@@ -2,8 +2,6 @@ import { Routes, Route, NavLink } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { useState } from "react";
 import Dashboard from "./pages/Dashboard";
-import Settings from "./pages/Settings";
-import OutputStyle from "./pages/OutputStyle";
 import Mcp from "./pages/Mcp";
 import Skills from "./pages/Skills";
 import Profiles from "./pages/Profiles";
@@ -46,18 +44,8 @@ function App() {
             </NavLink>
           </li>
           <li>
-            <NavLink to="/output-style" onClick={() => setSidebarOpen(false)}>
-              Output Style
-            </NavLink>
-          </li>
-          <li>
             <NavLink to="/mcp" onClick={() => setSidebarOpen(false)}>
               MCP
-            </NavLink>
-          </li>
-          <li>
-            <NavLink to="/settings" onClick={() => setSidebarOpen(false)}>
-              Settings
             </NavLink>
           </li>
           <li>
@@ -79,8 +67,6 @@ function App() {
           <Route path="/profiles" element={<Profiles />} />
           <Route path="/skills" element={<Skills />} />
           <Route path="/mcp" element={<Mcp />} />
-          <Route path="/output-style" element={<OutputStyle />} />
-          <Route path="/settings" element={<Settings />} />
           <Route path="/diagnostics" element={<Diagnostics />} />
           <Route path="/release" element={<Release />} />
           <Route path="*" element={<NotFound />} />

@@ -28,9 +28,8 @@ test.describe('Navigation', () => {
     await expect(sidebar.getByRole('link', { name: 'Skills' })).toBeVisible();
     await expect(sidebar.getByRole('link', { name: 'Profiles' })).toBeVisible();
     await expect(sidebar.getByRole('link', { name: 'MCP' })).toBeVisible();
-    await expect(sidebar.getByRole('link', { name: 'Output Style' })).toBeVisible();
-    await expect(sidebar.getByRole('link', { name: 'Settings' })).toBeVisible();
     await expect(sidebar.getByRole('link', { name: 'Diagnostics' })).toBeVisible();
+    await expect(sidebar.getByRole('link', { name: 'Release' })).toBeVisible();
   });
 
   test('should highlight active link on dashboard', async ({ page }) => {
@@ -45,22 +44,6 @@ test.describe('Navigation - Route Changes', () => {
     await page.addInitScript(mockContent);
     await page.goto('/');
     await page.waitForLoadState('networkidle');
-  });
-
-  test('should navigate to settings', async ({ page }) => {
-    const sidebar = page.locator('nav.sidebar');
-    await sidebar.getByRole('link', { name: 'Settings' }).click();
-
-    await expect(page).toHaveURL(/settings/);
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
-  });
-
-  test('should navigate to output style', async ({ page }) => {
-    const sidebar = page.locator('nav.sidebar');
-    await sidebar.getByRole('link', { name: 'Output Style' }).click();
-
-    await expect(page).toHaveURL(/output-style/);
-    await expect(page.getByRole('heading', { name: /output style/i, level: 1 })).toBeVisible();
   });
 
   test('should navigate to MCP', async ({ page }) => {
@@ -115,13 +98,6 @@ test.describe('Navigation - Direct URL Access', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-  });
-
-  test('should load settings directly', async ({ page }) => {
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
-
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
   });
 
   test('should load skills directly', async ({ page }) => {

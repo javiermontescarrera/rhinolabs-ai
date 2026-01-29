@@ -17,6 +17,14 @@
 - NEVER run reset, revert, or any destructive git operation without asking first
 - ALWAYS show pending changes and ask for confirmation before any git operation
 
+## Testing Rules
+
+- ALWAYS run tests after making any code changes
+- NEVER assume tests pass - verify by reading actual output
+- NEVER report "tests pass" without seeing output showing all tests passed
+- If a test file was modified, run that specific test file first
+- If tests fail, fix them before moving on - NEVER skip failing tests
+
 ## Personality
 
 Professional, helpful, and direct. Focus on delivering value and teaching best practices. Goal: help the team build quality software efficiently.

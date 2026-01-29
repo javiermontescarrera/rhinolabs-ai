@@ -116,29 +116,30 @@ graph TB
 ### Profile Components
 
 Each profile contains:
+
 - **Skills**: Reusable coding patterns and standards (SKILL.md files)
 - **Instructions**: Custom CLAUDE.md content with rules, code standards, and auto-invoke table
 - **Auto-invoke Rules**: Define when each skill should be automatically loaded
 
 ### User Profile (Main-Profile)
 
-| Aspect | Description |
-|--------|-------------|
-| **Scope** | Applies to ALL projects |
-| **Location** | `~/.claude/` |
-| **Purpose** | Agency-wide standards, security rules |
-| **Instructions** | Shared CLAUDE.md (editable via GUI) |
-| **Installation** | Auto-prompted on first sync |
+| Aspect           | Description                           |
+| ---------------- | ------------------------------------- |
+| **Scope**        | Applies to ALL projects               |
+| **Location**     | `~/.claude/`                          |
+| **Purpose**      | Agency-wide standards, security rules |
+| **Instructions** | Shared CLAUDE.md (editable via GUI)   |
+| **Installation** | Auto-prompted on first sync           |
 
 ### Project Profiles
 
-| Aspect | Description |
-|--------|-------------|
-| **Scope** | Applies only to specific project |
-| **Location** | `<project>/.claude-plugin/` |
-| **Purpose** | Tech-stack specific skills + instructions |
+| Aspect           | Description                                               |
+| ---------------- | --------------------------------------------------------- |
+| **Scope**        | Applies only to specific project                          |
+| **Location**     | `<project>/.claude-plugin/`                               |
+| **Purpose**      | Tech-stack specific skills + instructions                 |
 | **Instructions** | Generated with auto-invoke table based on assigned skills |
-| **Installation** | Manual via `rhinolabs-ai profile install` |
+| **Installation** | Manual via `rhinolabs-ai profile install`                 |
 
 ### Profile Creation Flow
 
@@ -155,6 +156,7 @@ flowchart LR
 ```
 
 When creating a profile with skills, the instructions template is automatically generated with:
+
 - Project context and rules
 - Code standards
 - **Skills Auto-invoke Table** populated with assigned skills
@@ -289,14 +291,14 @@ graph LR
     end
 ```
 
-| Component | Path |
-|-----------|------|
-| CLI Config | `~/.config/rhinolabs-ai/` |
-| User Skills | `~/.claude/skills/` |
-| Project Skills | `<project>/.claude/skills/` |
-| Plugin (macOS) | `~/Library/Application Support/Claude Code/plugins/rhinolabs-claude/` |
-| Plugin (Linux) | `~/.config/claude-code/plugins/rhinolabs-claude/` |
-| Plugin (Windows) | `%APPDATA%\Claude Code\plugins\rhinolabs-claude\` |
+| Component        | Path                                                                  |
+| ---------------- | --------------------------------------------------------------------- |
+| CLI Config       | `~/.config/rhinolabs-ai/`                                             |
+| User Skills      | `~/.claude/skills/`                                                   |
+| Project Skills   | `<project>/.claude/skills/`                                           |
+| Plugin (macOS)   | `~/Library/Application Support/Claude Code/plugins/rhinolabs-claude/` |
+| Plugin (Linux)   | `~/.config/claude-code/plugins/rhinolabs-claude/`                     |
+| Plugin (Windows) | `%APPDATA%\Claude Code\plugins\rhinolabs-claude\`                     |
 
 ## Security Model
 
@@ -392,5 +394,5 @@ Proprietary - Rhinolabs Internal Use Only
 
 ---
 
-**Version**: 2.2.0
+**Version**: 0.1.0
 **Last Updated**: 2026-01-29

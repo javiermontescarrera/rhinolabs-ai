@@ -1,14 +1,21 @@
-.PHONY: test test-rust test-e2e test-quick build clean help
+.PHONY: test test-rust test-e2e test-quick build clean help setup-hooks
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  make test       - Run ALL tests (Rust + E2E)"
-	@echo "  make test-rust  - Run Rust tests only (core + cli)"
-	@echo "  make test-e2e   - Run E2E tests only (GUI)"
-	@echo "  make test-quick - Run quick tests (Rust only, no E2E)"
-	@echo "  make build      - Build all components"
-	@echo "  make clean      - Clean build artifacts"
+	@echo "  make setup-hooks - Configure git hooks (run after clone)"
+	@echo "  make test        - Run ALL tests (Rust + E2E)"
+	@echo "  make test-rust   - Run Rust tests only (core + cli)"
+	@echo "  make test-e2e    - Run E2E tests only (GUI)"
+	@echo "  make test-quick  - Run quick tests (Rust only, no E2E)"
+	@echo "  make build       - Build all components"
+	@echo "  make clean       - Clean build artifacts"
+
+# Setup git hooks (run this after cloning)
+setup-hooks:
+	@echo "Configuring git hooks..."
+	git config core.hooksPath .githooks
+	@echo "✓ Git hooks configured. Pre-push will run all tests."
 
 # Run all tests
 test: test-rust test-e2e
