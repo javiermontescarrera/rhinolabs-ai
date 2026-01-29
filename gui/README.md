@@ -209,6 +209,75 @@ graph TB
     style SYNC fill:#38a169,stroke:#68d391,color:#fff
 ```
 
+### MCP Toolkit Integration
+
+The GUI integrates with [mcp-toolkit](https://github.com/chrisllontop/mcp-toolkit) for centralized MCP configuration management.
+
+```mermaid
+flowchart TB
+    subgraph "Source of Truth"
+        TOOLKIT[mcp-toolkit GUI]
+        TOOLKIT_DB[(SQLite DB)]
+        TOOLKIT --> TOOLKIT_DB
+    end
+
+    subgraph "Sync Methods"
+        direction TB
+        FILE_EXPORT[File Export]
+        REMOTE_URL[Remote URL]
+        LOCAL_DB[Local DB Read]
+
+        TOOLKIT_DB -->|"Manual export"| FILE_EXPORT
+        FILE_EXPORT -->|"Upload to S3/CDN"| REMOTE_URL
+        TOOLKIT_DB -.->|"Future"| LOCAL_DB
+    end
+
+    subgraph "rhinolabs-ai"
+        SYNC_SCRIPT[sync-mcp-config.sh]
+        MCP_JSON[.mcp.json]
+        GUI_PAGE[GUI MCP Page]
+
+        FILE_EXPORT -->|"MCP_CONFIG_SOURCE=file"| SYNC_SCRIPT
+        REMOTE_URL -->|"MCP_CONFIG_SOURCE=remote"| SYNC_SCRIPT
+        LOCAL_DB -.->|"MCP_CONFIG_SOURCE=local"| SYNC_SCRIPT
+
+        SYNC_SCRIPT --> MCP_JSON
+        GUI_PAGE -->|"Sync from Source"| SYNC_SCRIPT
+    end
+
+    subgraph "Distribution"
+        GIT[Git Repository]
+        DEVS[Developer Machines]
+        CLAUDE[Claude Code]
+
+        MCP_JSON --> GIT
+        GIT -->|"git pull"| DEVS
+        DEVS --> CLAUDE
+    end
+
+    style TOOLKIT fill:#8b5cf6,stroke:#a78bfa,color:#fff
+    style SYNC_SCRIPT fill:#f59e0b,stroke:#fbbf24,color:#000
+    style MCP_JSON fill:#10b981,stroke:#34d399,color:#fff
+    style LOCAL_DB fill:#6b7280,stroke:#9ca3af,color:#fff
+```
+
+**Sync Methods Status:**
+
+| Method | Status | Usage |
+|--------|--------|-------|
+| File Export | ✅ Implemented | `MCP_CONFIG_SOURCE=file ./sync-mcp-config.sh` |
+| Remote URL | ✅ Implemented | `MCP_CONFIG_SOURCE=remote MCP_CONFIG_URL=<url> ./sync-mcp-config.sh` |
+| Local DB | ⏳ Planned | Direct read from mcp-toolkit SQLite database |
+
+**Workflow:**
+1. DevOps configures MCP servers in mcp-toolkit
+2. Export config (manual or upload to remote)
+3. Run sync script or use GUI "Sync from Source"
+4. Commit `.mcp.json` to Git
+5. Developers pull and restart Claude Code
+
+See [MCP_CENTRALIZED_CONFIG.md](../docs/MCP_CENTRALIZED_CONFIG.md) for detailed setup instructions.
+
 ### Settings
 
 ```mermaid
