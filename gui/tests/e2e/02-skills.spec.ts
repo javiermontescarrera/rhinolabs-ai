@@ -418,7 +418,7 @@ test.describe('Skills - Browse Tab', () => {
     await expect(page.getByText(/browse only source/i)).toBeVisible();
   });
 
-  test('should add remote skill to plugin', async ({ page }) => {
+  test('should show category popup when adding remote skill', async ({ page }) => {
     await page.getByRole('button', { name: /browse/i }).click();
     await page.locator('select').filter({ hasText: /select source/i }).selectOption('anthropic-official');
 
@@ -428,10 +428,72 @@ test.describe('Skills - Browse Tab', () => {
     // Click add button
     await addButton.click();
 
-    // Wait for the operation - button should change or show success indicator
-    await page.waitForTimeout(500);
+    // Should show category popup
+    await expect(page.getByRole('heading', { name: /change category/i })).toBeVisible();
+    await expect(page.locator('select').filter({ hasText: /custom/i })).toBeVisible();
+  });
 
-    // The skill should now show "In Plugin" badge or the add button should be gone
-    await expect(remoteSkill.locator('.status-badge').or(addButton)).toBeVisible();
+  test('should add remote skill with selected category', async ({ page }) => {
+    await page.getByRole('button', { name: /browse/i }).click();
+    await page.locator('select').filter({ hasText: /select source/i }).selectOption('anthropic-official');
+
+    const remoteSkill = page.locator('.list-item').filter({ hasText: 'Remote Skill 1' });
+    await remoteSkill.getByRole('button', { name: /add/i }).click();
+
+    // Select category in popup
+    await page.locator('.card select').selectOption('frontend');
+
+    // Click Save
+    await page.getByRole('button', { name: /save/i }).click();
+
+    // Should show success toast
+    await expect(page.getByText(/added/i)).toBeVisible();
+  });
+});
+
+test.describe('Skills - Change Category', () => {
+  test.beforeEach(async ({ page }) => {
+    const mockContent = fs.readFileSync(path.resolve(__dirname, 'mocks/tauri-mock.js'), 'utf-8');
+    await page.addInitScript(mockContent);
+    await page.goto('/skills');
+    await page.waitForLoadState('networkidle');
+  });
+
+  test('should show Category button for each skill', async ({ page }) => {
+    const skillItem = page.locator('.list-item').filter({ hasText: 'react-patterns' });
+    await expect(skillItem.getByRole('button', { name: /category/i })).toBeVisible();
+  });
+
+  test('should open category popup when clicking Category button', async ({ page }) => {
+    const skillItem = page.locator('.list-item').filter({ hasText: 'react-patterns' });
+    await skillItem.getByRole('button', { name: /category/i }).click();
+
+    // Should show category popup
+    await expect(page.getByRole('heading', { name: /change category/i })).toBeVisible();
+  });
+
+  test('should change skill category', async ({ page }) => {
+    const skillItem = page.locator('.list-item').filter({ hasText: 'react-patterns' });
+    await skillItem.getByRole('button', { name: /category/i }).click();
+
+    // Select new category
+    await page.locator('.card select').selectOption('testing');
+
+    // Click Save
+    await page.getByRole('button', { name: /save/i }).click();
+
+    // Should show success toast
+    await expect(page.getByText(/category changed/i)).toBeVisible();
+  });
+
+  test('should close popup when clicking Cancel', async ({ page }) => {
+    const skillItem = page.locator('.list-item').filter({ hasText: 'react-patterns' });
+    await skillItem.getByRole('button', { name: /category/i }).click();
+
+    // Click Cancel
+    await page.getByRole('button', { name: /cancel/i }).click();
+
+    // Popup should be closed
+    await expect(page.getByRole('heading', { name: /change category/i })).not.toBeVisible();
   });
 });

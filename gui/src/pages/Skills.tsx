@@ -61,6 +61,16 @@ export default function Skills() {
   const [addingSkill, setAddingSkill] = useState<string | null>(null);
   const [previewingSkillId, setPreviewingSkillId] = useState<string | null>(null);
 
+  // Category popup (for change and install)
+  const [categoryPopup, setCategoryPopup] = useState<{
+    mode: 'change' | 'install';
+    id: string;
+    name: string;
+    description?: string;
+    remote?: RemoteSkill;
+  } | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<SkillCategory>('custom');
+
 
   // IDE and skill files state
   const [availableIdes, setAvailableIdes] = useState<IdeInfo[]>([]);
@@ -161,41 +171,71 @@ export default function Skills() {
     }
   }
 
-  async function handleCreate() {
-    alert('handleCreate called! formData: ' + JSON.stringify(formData));
+  async function handleCategoryPopupConfirm() {
+    if (!categoryPopup) return;
 
+    if (categoryPopup.mode === 'change') {
+      // Change category of existing skill
+      try {
+        await api.setSkillCategory(categoryPopup.id, selectedCategory);
+        toast.success(`Category changed to ${selectedCategory}`);
+        setCategoryPopup(null);
+        loadData();
+      } catch (err) {
+        toast.error('Failed to change category');
+      }
+    } else {
+      // Install from remote with category
+      if (!categoryPopup.remote) return;
+      setAddingSkill(categoryPopup.id);
+      try {
+        const source = sources.find((s) => s.id === categoryPopup.remote!.sourceId);
+        if (!source) throw new Error('Source not found');
+
+        await api.installSkillFromRemote({
+          sourceUrl: source.url,
+          skillId: categoryPopup.remote.id,
+          sourceId: categoryPopup.remote.sourceId,
+          sourceName: categoryPopup.remote.sourceName,
+        });
+
+        if (selectedCategory !== 'custom') {
+          await api.setSkillCategory(categoryPopup.id, selectedCategory);
+        }
+
+        toast.success(`Added "${categoryPopup.name}"`);
+
+        if (availableIdes.length > 0) {
+          await api.openSkillInIde(categoryPopup.id, availableIdes[0].command);
+        }
+
+        loadData();
+        if (selectedSource) handleSelectSource(selectedSource);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Failed to add skill';
+        toast.error(message);
+      } finally {
+        setAddingSkill(null);
+        setCategoryPopup(null);
+      }
+    }
+  }
+
+  async function handleCreate() {
     if (!formData.id.trim() || !formData.name.trim()) {
-      console.log('Validation failed: ID or name empty');
       toast.error('ID and name are required');
       return;
     }
 
-    console.log('Calling api.createSkill...');
     try {
-      const result = await api.createSkill(formData);
-      console.log('Success! Result:', result);
+      await api.createSkill(formData);
       toast.success('Skill created');
       setCreating(false);
       resetForm();
       loadData();
     } catch (err: unknown) {
-      console.log('=== CATCH BLOCK ===');
-      console.log('Error type:', typeof err);
-      console.log('Error value:', err);
-      console.log('Error stringified:', JSON.stringify(err));
-
-      // Tauri returns error as string directly
-      let message = 'Unknown error';
-      if (typeof err === 'string') {
-        message = err;
-      } else if (err instanceof Error) {
-        message = err.message;
-      } else if (err && typeof err === 'object') {
-        message = JSON.stringify(err);
-      }
-
-      console.log('Final message:', message);
-      toast.error(message, { duration: 10000 });
+      const message = err instanceof Error ? err.message : typeof err === 'string' ? err : 'Failed to create skill';
+      toast.error(message);
     }
   }
 
@@ -334,41 +374,15 @@ export default function Skills() {
     }
   }
 
-  async function handleAddFromSource(remote: RemoteSkill) {
-    setAddingSkill(remote.id);
-    try {
-      // Get the source URL
-      const source = sources.find((s) => s.id === remote.sourceId);
-      if (!source) {
-        throw new Error('Source not found');
-      }
-
-      // Install from remote (downloads all files)
-      await api.installSkillFromRemote({
-        sourceUrl: source.url,
-        skillId: remote.id,
-        sourceId: remote.sourceId,
-        sourceName: remote.sourceName,
-      });
-      toast.success(`Added "${remote.name}" to plugin`);
-
-      // Open in IDE if available
-      if (availableIdes.length > 0) {
-        await api.openSkillInIde(remote.id, availableIdes[0].command);
-      }
-
-      // Refresh data
-      loadData();
-      // Refresh browse list to show "In Plugin" badge
-      if (selectedSource) {
-        handleSelectSource(selectedSource);
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to add skill';
-      toast.error(message);
-    } finally {
-      setAddingSkill(null);
-    }
+  function handleAddFromSource(remote: RemoteSkill) {
+    setSelectedCategory('custom');
+    setCategoryPopup({
+      mode: 'install',
+      id: remote.id,
+      name: remote.name,
+      description: remote.description,
+      remote,
+    });
   }
 
   async function handlePreviewRemote(remote: RemoteSkill) {
@@ -424,44 +438,21 @@ export default function Skills() {
     }
   }
 
-  async function handleAddFromPreview() {
+  function handleAddFromPreview() {
     if (!previewingRemote) return;
-    try {
-      // Get the source URL
-      const source = sources.find((s) => s.id === previewingRemote.sourceId);
-      if (!source) {
-        throw new Error('Source not found');
-      }
-
-      // Install from remote (downloads all files)
-      await api.installSkillFromRemote({
-        sourceUrl: source.url,
-        skillId: previewingRemote.id,
-        sourceId: previewingRemote.sourceId,
-        sourceName: previewingRemote.sourceName,
-      });
-      toast.success(`Added "${previewingRemote.name}" to plugin`);
-
-      // Open in IDE if available
-      if (availableIdes.length > 0) {
-        await api.openSkillInIde(previewingRemote.id, availableIdes[0].command);
-      }
-
-      // Reset preview state
-      setPreviewingRemote(null);
-      setPreviewFiles([]);
-      setPreviewSelectedFile(null);
-      setPreviewContent('');
-
-      // Refresh data
-      loadData();
-      if (selectedSource) {
-        handleSelectSource(selectedSource);
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to add skill';
-      toast.error(message);
-    }
+    setSelectedCategory('custom');
+    setCategoryPopup({
+      mode: 'install',
+      id: previewingRemote.id,
+      name: previewingRemote.name,
+      description: previewingRemote.description,
+      remote: previewingRemote,
+    });
+    // Close preview
+    setPreviewingRemote(null);
+    setPreviewFiles([]);
+    setPreviewSelectedFile(null);
+    setPreviewContent('');
   }
 
   // ============================================
@@ -1018,7 +1009,7 @@ export default function Skills() {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button className="btn btn-primary" onClick={handleAddFromPreview}>
-              Add to Plugin
+              Add
             </button>
             <button
               className="btn btn-secondary"
@@ -1274,6 +1265,19 @@ export default function Skills() {
                     >
                       Edit
                     </button>
+                    <button
+                      className="btn btn-sm btn-secondary"
+                      onClick={() => {
+                        setSelectedCategory(skill.category);
+                        setCategoryPopup({
+                          mode: 'change',
+                          id: skill.id,
+                          name: skill.name,
+                        });
+                      }}
+                    >
+                      Category
+                    </button>
                     {(skill.isCustom || skill.sourceId) && (
                       <button className="btn btn-sm btn-danger" onClick={() => handleDelete(skill)}>
                         Delete
@@ -1487,6 +1491,55 @@ export default function Skills() {
             )}
           </div>
         </>
+      )}
+
+      {/* Category popup */}
+      {categoryPopup && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setCategoryPopup(null)}
+        >
+          <div
+            className="card"
+            style={{ padding: '1.5rem', minWidth: '300px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ marginBottom: '1rem' }}>Change Category</h3>
+            <div className="form-group">
+              <label>Category</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value as SkillCategory)}
+                style={{ width: '100%' }}
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+              <button className="btn btn-primary" onClick={handleCategoryPopupConfirm}>
+                Save
+              </button>
+              <button className="btn btn-secondary" onClick={() => setCategoryPopup(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

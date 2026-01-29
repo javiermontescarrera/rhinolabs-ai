@@ -60,6 +60,7 @@ graph TB
 
     CLI --> SYNC[sync]
     CLI --> PROFILE[profile]
+    CLI --> SKILL[skill]
     CLI --> INSTALL[install]
     CLI --> UPDATE[update]
     CLI --> UNINSTALL[uninstall]
@@ -67,15 +68,21 @@ graph TB
     CLI --> DOCTOR[doctor]
     CLI --> SYNCMCP[sync-mcp]
 
-    PROFILE --> LIST[list]
-    PROFILE --> SHOW[show]
-    PROFILE --> INST[install]
-    PROFILE --> UPD[update]
-    PROFILE --> UNINST[uninstall]
+    PROFILE --> P_LIST[list]
+    PROFILE --> P_SHOW[show]
+    PROFILE --> P_INST[install]
+    PROFILE --> P_UPD[update]
+    PROFILE --> P_UNINST[uninstall]
+
+    SKILL --> S_LIST[list]
+    SKILL --> S_SHOW[show]
+    SKILL --> S_CREATE[create]
+    SKILL --> S_SETCAT[set-category]
 
     style CLI fill:#805ad5,stroke:#9f7aea,color:#fff
     style SYNC fill:#38a169,stroke:#68d391,color:#fff
     style PROFILE fill:#3182ce,stroke:#63b3ed,color:#fff
+    style SKILL fill:#dd6b20,stroke:#ed8936,color:#fff
 ```
 
 ## Auto-Sync Feature
@@ -157,6 +164,27 @@ rhinolabs-ai profile uninstall
 
 # Uninstall from specific path
 rhinolabs-ai profile uninstall -P /path/to/project
+```
+
+### Skill Management
+
+```bash
+# List all skills (grouped by category)
+rhinolabs-ai skill list
+
+# Show skill details
+rhinolabs-ai skill show <skill-id>
+
+# Create a new custom skill
+rhinolabs-ai skill create --id my-skill --name "My Skill" --category frontend
+
+# Create with description
+rhinolabs-ai skill create --id my-skill --name "My Skill" --category frontend --description "Skill description"
+
+# Change skill category
+rhinolabs-ai skill set-category <skill-id> <category>
+
+# Available categories: corporate, frontend, testing, ai-sdk, utilities, custom
 ```
 
 ### Configuration Sync
@@ -419,6 +447,7 @@ graph TB
 
     subgraph "Commands"
         PROFILE_CMD[profile.rs]
+        SKILL_CMD[skill.rs]
         DEPLOY_CMD[deploy.rs]
         AUTO_SYNC[auto_sync.rs]
         INSTALL_CMD[install.rs]
@@ -432,11 +461,13 @@ graph TB
     MAIN --> COMMANDS
     MAIN --> UI
     COMMANDS --> PROFILE_CMD
+    COMMANDS --> SKILL_CMD
     COMMANDS --> DEPLOY_CMD
     COMMANDS --> AUTO_SYNC
     COMMANDS --> INSTALL_CMD
     COMMANDS --> STATUS_CMD
     PROFILE_CMD --> CORE
+    SKILL_CMD --> CORE
     DEPLOY_CMD --> CORE
     AUTO_SYNC --> CORE
 
@@ -467,5 +498,5 @@ cargo run -- sync
 
 ---
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-28
+**Version**: 1.1.0
+**Last Updated**: 2026-01-29

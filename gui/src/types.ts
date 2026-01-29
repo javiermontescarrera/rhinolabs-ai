@@ -141,6 +141,7 @@ export interface UpdateSkillInput {
   description?: string;
   content?: string;
   enabled?: boolean;
+  category?: SkillCategory;
 }
 
 export interface InstallSkillInput {

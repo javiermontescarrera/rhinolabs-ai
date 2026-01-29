@@ -4,6 +4,7 @@ pub mod doctor;
 pub mod install;
 pub mod interactive;
 pub mod profile;
+pub mod skill;
 pub mod status;
 pub mod sync_mcp;
 pub mod uninstall;

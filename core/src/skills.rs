@@ -164,6 +164,7 @@ pub struct UpdateSkillInput {
     pub description: Option<String>,
     pub content: Option<String>,
     pub enabled: Option<bool>,
+    pub category: Option<SkillCategory>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,6 +191,10 @@ struct SkillsConfig {
     sources: Vec<SkillSource>,
     #[serde(default)]
     skill_meta: std::collections::HashMap<String, SkillMeta>,
+    /// User-defined category mappings (skill_id -> category)
+    /// Takes precedence over hardcoded category constants
+    #[serde(default)]
+    category_map: std::collections::HashMap<String, SkillCategory>,
 }
 
 /// Built-in skill categories
@@ -245,7 +250,14 @@ impl Skills {
     }
 
     /// Determine the category of a skill by id
-    fn get_category(id: &str) -> SkillCategory {
+    /// Priority: 1) user-defined in category_map, 2) hardcoded constants, 3) Custom
+    fn get_category(id: &str, config: &SkillsConfig) -> SkillCategory {
+        // First check user-defined category_map
+        if let Some(category) = config.category_map.get(id) {
+            return category.clone();
+        }
+
+        // Fallback to hardcoded constants (built-in skills)
         if CORPORATE_SKILLS.contains(&id) {
             SkillCategory::Corporate
         } else if FRONTEND_SKILLS.contains(&id) {
@@ -327,9 +339,14 @@ impl Skills {
         let is_custom = config.custom.contains(&id);
         let enabled = !config.disabled.contains(&id);
         let category = if is_custom {
-            SkillCategory::Custom
+            // Custom skills can still have user-defined categories from category_map
+            config
+                .category_map
+                .get(&id)
+                .cloned()
+                .unwrap_or(SkillCategory::Custom)
         } else {
-            Self::get_category(&id)
+            Self::get_category(&id, config)
         };
 
         // Get source info and modification status from meta
@@ -471,11 +488,17 @@ impl Skills {
             ))
         })?;
 
-        // Update config to mark as custom
+        // Update config to mark as custom and save category
         let mut config = Self::load_config().map_err(|e| {
             RhinolabsError::ConfigError(format!("Failed to load skills config: {}", e))
         })?;
         config.custom.push(input.id.clone());
+
+        // Save category in category_map if not Custom (Custom is the default)
+        if input.category != SkillCategory::Custom {
+            config.category_map.insert(input.id.clone(), input.category);
+        }
+
         Self::save_config(&config).map_err(|e| {
             RhinolabsError::ConfigError(format!("Failed to save skills config: {}", e))
         })?;
@@ -519,6 +542,11 @@ impl Skills {
         // Handle enabled toggle
         if let Some(enabled) = input.enabled {
             Self::toggle(id, enabled)?;
+        }
+
+        // Handle category change
+        if let Some(category) = input.category {
+            Self::set_category(id, category)?;
         }
 
         Ok(())
@@ -582,6 +610,7 @@ impl Skills {
         config.custom.retain(|s| s != id);
         config.disabled.retain(|s| s != id);
         config.skill_meta.remove(id);
+        config.category_map.remove(id);
         Self::save_config(&config)?;
 
         Ok(())
@@ -868,6 +897,36 @@ impl Skills {
         }
 
         Self::save_config(&config)
+    }
+
+    /// Set the category for a skill (saves to category_map in config)
+    /// This allows users to override the default category for any skill
+    pub fn set_category(skill_id: &str, category: SkillCategory) -> Result<()> {
+        let skill_dir = Self::skills_dir()?.join(skill_id);
+
+        if !skill_dir.exists() {
+            return Err(RhinolabsError::ConfigError(format!(
+                "Skill '{}' not found",
+                skill_id
+            )));
+        }
+
+        let mut config = Self::load_config()?;
+
+        if category == SkillCategory::Custom {
+            // Remove from category_map if setting to Custom (default)
+            config.category_map.remove(skill_id);
+        } else {
+            config.category_map.insert(skill_id.to_string(), category);
+        }
+
+        Self::save_config(&config)
+    }
+
+    /// Get the category for a skill
+    pub fn get_skill_category(skill_id: &str) -> Result<SkillCategory> {
+        let config = Self::load_config()?;
+        Ok(Self::get_category(skill_id, &config))
     }
 
     /// Get list of installed skill IDs for checking installation status
@@ -1250,22 +1309,34 @@ This is the content.
     }
 
     #[test]
-    fn test_get_category() {
+    fn test_get_category_hardcoded() {
+        // Test hardcoded category mapping with empty config
+        let config = SkillsConfig::default();
+
         assert_eq!(
-            Skills::get_category("rhinolabs-standards"),
+            Skills::get_category("rhinolabs-standards", &config),
             SkillCategory::Corporate
         );
         assert_eq!(
-            Skills::get_category("react-patterns"),
+            Skills::get_category("react-patterns", &config),
             SkillCategory::Frontend
         );
-        assert_eq!(Skills::get_category("playwright"), SkillCategory::Testing);
-        assert_eq!(Skills::get_category("ai-sdk-core"), SkillCategory::AiSdk);
         assert_eq!(
-            Skills::get_category("skill-creator"),
+            Skills::get_category("playwright", &config),
+            SkillCategory::Testing
+        );
+        assert_eq!(
+            Skills::get_category("ai-sdk-core", &config),
+            SkillCategory::AiSdk
+        );
+        assert_eq!(
+            Skills::get_category("skill-creator", &config),
             SkillCategory::Utilities
         );
-        assert_eq!(Skills::get_category("unknown-skill"), SkillCategory::Custom);
+        assert_eq!(
+            Skills::get_category("unknown-skill", &config),
+            SkillCategory::Custom
+        );
     }
 
     #[test]
@@ -1832,5 +1903,233 @@ This is the content.
         // Now it should be detected as modified
         let skill = Skills::get("modified-skill").unwrap().unwrap();
         assert!(skill.is_modified);
+    }
+
+    // ============================================
+    // Dynamic Category Tests
+    // ============================================
+
+    #[test]
+    fn test_get_category_uses_category_map_first() {
+        // Test that category_map takes precedence over hardcoded constants
+        let mut category_map = std::collections::HashMap::new();
+        // Override a hardcoded skill's category
+        category_map.insert("react-patterns".to_string(), SkillCategory::Corporate);
+
+        let config = SkillsConfig {
+            category_map,
+            ..Default::default()
+        };
+
+        // Should use category_map value, not hardcoded Frontend
+        let category = Skills::get_category("react-patterns", &config);
+        assert_eq!(category, SkillCategory::Corporate);
+    }
+
+    #[test]
+    fn test_get_category_falls_back_to_hardcoded() {
+        // Test that hardcoded constants are used when no category_map entry
+        let config = SkillsConfig::default();
+
+        let category = Skills::get_category("react-patterns", &config);
+        assert_eq!(category, SkillCategory::Frontend);
+
+        let category = Skills::get_category("rhinolabs-standards", &config);
+        assert_eq!(category, SkillCategory::Corporate);
+    }
+
+    #[test]
+    fn test_get_category_returns_custom_for_unknown() {
+        let config = SkillsConfig::default();
+
+        let category = Skills::get_category("some-unknown-skill", &config);
+        assert_eq!(category, SkillCategory::Custom);
+    }
+
+    #[test]
+    fn test_set_category_saves_to_config() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let env = TestEnv::new();
+        env.setup_skills_dir();
+        env.create_skill("my-skill", "My Skill", "Description", "# Content");
+
+        // Initially should be Custom (unknown skill)
+        let skill = Skills::get("my-skill").unwrap().unwrap();
+        assert_eq!(skill.category, SkillCategory::Custom);
+
+        // Set to Frontend
+        Skills::set_category("my-skill", SkillCategory::Frontend).unwrap();
+
+        // Should now be Frontend
+        let skill = Skills::get("my-skill").unwrap().unwrap();
+        assert_eq!(skill.category, SkillCategory::Frontend);
+    }
+
+    #[test]
+    fn test_set_category_removes_when_custom() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let env = TestEnv::new();
+        env.setup_skills_dir();
+        env.create_skill("my-skill", "My Skill", "Description", "# Content");
+
+        // Set to Frontend first
+        Skills::set_category("my-skill", SkillCategory::Frontend).unwrap();
+
+        // Verify it's in category_map
+        let config = Skills::load_config().unwrap();
+        assert!(config.category_map.contains_key("my-skill"));
+
+        // Set back to Custom
+        Skills::set_category("my-skill", SkillCategory::Custom).unwrap();
+
+        // Should be removed from category_map
+        let config = Skills::load_config().unwrap();
+        assert!(!config.category_map.contains_key("my-skill"));
+    }
+
+    #[test]
+    fn test_set_category_fails_for_nonexistent_skill() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let env = TestEnv::new();
+        env.setup_skills_dir();
+
+        let result = Skills::set_category("nonexistent-skill", SkillCategory::Frontend);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not found"));
+    }
+
+    #[test]
+    fn test_create_skill_with_category_saves_to_config() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let env = TestEnv::new();
+        env.setup_skills_dir();
+
+        let input = CreateSkillInput {
+            id: "new-frontend-skill".to_string(),
+            name: "New Frontend Skill".to_string(),
+            description: "A new skill".to_string(),
+            category: SkillCategory::Frontend,
+            content: "# Content".to_string(),
+        };
+
+        let skill = Skills::create(input).unwrap();
+        assert_eq!(skill.category, SkillCategory::Frontend);
+
+        // Verify it's in category_map
+        let config = Skills::load_config().unwrap();
+        assert_eq!(
+            config.category_map.get("new-frontend-skill"),
+            Some(&SkillCategory::Frontend)
+        );
+    }
+
+    #[test]
+    fn test_create_skill_with_custom_category_not_in_map() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let env = TestEnv::new();
+        env.setup_skills_dir();
+
+        let input = CreateSkillInput {
+            id: "custom-skill-2".to_string(),
+            name: "Custom Skill 2".to_string(),
+            description: "A custom skill".to_string(),
+            category: SkillCategory::Custom, // Default
+            content: "# Content".to_string(),
+        };
+
+        let skill = Skills::create(input).unwrap();
+        assert_eq!(skill.category, SkillCategory::Custom);
+
+        // Should NOT be in category_map (Custom is default, no need to store)
+        let config = Skills::load_config().unwrap();
+        assert!(!config.category_map.contains_key("custom-skill-2"));
+    }
+
+    #[test]
+    fn test_delete_skill_removes_from_category_map() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let env = TestEnv::new();
+        env.setup_skills_dir();
+        env.create_skill("deletable-skill", "Deletable", "To be deleted", "# Content");
+
+        // Mark as custom so it can be deleted
+        let mut category_map = std::collections::HashMap::new();
+        category_map.insert("deletable-skill".to_string(), SkillCategory::Testing);
+
+        let config = SkillsConfig {
+            custom: vec!["deletable-skill".to_string()],
+            category_map,
+            ..Default::default()
+        };
+        env.create_config(&config);
+
+        // Verify category is set
+        let skill = Skills::get("deletable-skill").unwrap().unwrap();
+        assert_eq!(skill.category, SkillCategory::Testing);
+
+        // Delete the skill
+        Skills::delete("deletable-skill").unwrap();
+
+        // Verify category_map entry is removed
+        let config = Skills::load_config().unwrap();
+        assert!(!config.category_map.contains_key("deletable-skill"));
+    }
+
+    #[test]
+    fn test_custom_skill_can_have_category_from_map() {
+        let _lock = ENV_MUTEX.lock().unwrap();
+        let env = TestEnv::new();
+        env.setup_skills_dir();
+        env.create_skill(
+            "my-custom-skill-3",
+            "My Custom",
+            "Custom skill",
+            "# Content",
+        );
+
+        // Mark as custom with a specific category
+        let mut category_map = std::collections::HashMap::new();
+        category_map.insert("my-custom-skill-3".to_string(), SkillCategory::Utilities);
+
+        let config = SkillsConfig {
+            custom: vec!["my-custom-skill-3".to_string()],
+            category_map,
+            ..Default::default()
+        };
+        env.create_config(&config);
+
+        // Should use the category from category_map
+        let skill = Skills::get("my-custom-skill-3").unwrap().unwrap();
+        assert!(skill.is_custom);
+        assert_eq!(skill.category, SkillCategory::Utilities);
+    }
+
+    #[test]
+    fn test_skills_config_category_map_serialization() {
+        let mut category_map = std::collections::HashMap::new();
+        category_map.insert("skill-a".to_string(), SkillCategory::Frontend);
+        category_map.insert("skill-b".to_string(), SkillCategory::Testing);
+
+        let config = SkillsConfig {
+            category_map,
+            ..Default::default()
+        };
+
+        // Serialize
+        let json = serde_json::to_string(&config).unwrap();
+        assert!(json.contains("categoryMap"));
+        assert!(json.contains("skill-a"));
+        assert!(json.contains("frontend"));
+
+        // Deserialize
+        let parsed: SkillsConfig = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            parsed.category_map.get("skill-a"),
+            Some(&SkillCategory::Frontend)
+        );
+        assert_eq!(
+            parsed.category_map.get("skill-b"),
+            Some(&SkillCategory::Testing)
+        );
     }
 }

@@ -70,6 +70,12 @@ enum Commands {
         action: ProfileAction,
     },
 
+    /// Manage skills
+    Skill {
+        #[command(subcommand)]
+        action: SkillAction,
+    },
+
     /// Sync configuration from GitHub (pull latest deployed config)
     Sync,
 }
@@ -110,6 +116,46 @@ enum ProfileAction {
         /// Target project path (defaults to current directory)
         #[arg(short = 'P', long)]
         path: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum SkillAction {
+    /// List all skills
+    List,
+
+    /// Show details of a specific skill
+    Show {
+        /// Skill ID to show
+        skill_id: String,
+    },
+
+    /// Create a new custom skill
+    Create {
+        /// Unique skill identifier (e.g., "my-skill")
+        #[arg(long)]
+        id: String,
+
+        /// Display name for the skill
+        #[arg(long)]
+        name: String,
+
+        /// Skill category: corporate, frontend, testing, ai-sdk, utilities, custom
+        #[arg(long, default_value = "custom")]
+        category: String,
+
+        /// Optional description
+        #[arg(long)]
+        description: Option<String>,
+    },
+
+    /// Set the category for an existing skill
+    SetCategory {
+        /// Skill ID to update
+        skill_id: String,
+
+        /// New category: corporate, frontend, testing, ai-sdk, utilities, custom
+        category: String,
     },
 }
 
@@ -170,6 +216,25 @@ async fn main() -> anyhow::Result<()> {
             }
             ProfileAction::Uninstall { path } => {
                 profile::uninstall(path)?;
+            }
+        },
+        Some(Commands::Skill { action }) => match action {
+            SkillAction::List => {
+                skill::list()?;
+            }
+            SkillAction::Show { skill_id } => {
+                skill::show(&skill_id)?;
+            }
+            SkillAction::Create {
+                id,
+                name,
+                category,
+                description,
+            } => {
+                skill::create(id, name, category, description)?;
+            }
+            SkillAction::SetCategory { skill_id, category } => {
+                skill::set_category(skill_id, category)?;
             }
         },
         Some(Commands::Sync) => {

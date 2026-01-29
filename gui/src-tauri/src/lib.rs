@@ -88,6 +88,7 @@ pub fn run() {
             update_skill,
             toggle_skill,
             delete_skill,
+            set_skill_category,
             // Skill Sources
             list_skill_sources,
             add_skill_source,

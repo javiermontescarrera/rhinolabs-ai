@@ -235,6 +235,10 @@ export const api = {
     return invoke('delete_skill', { id });
   },
 
+  setSkillCategory(skillId: string, category: string): Promise<void> {
+    return invoke('set_skill_category', { skillId, category });
+  },
+
   // ============================================
   // Skill Sources
   // ============================================

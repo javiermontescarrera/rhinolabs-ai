@@ -492,6 +492,62 @@ rhinolabs-ai profile install react-stack --no-copilot
 
 ---
 
+## Skill Categories
+
+Skills are organized into categories for UI grouping and filtering.
+
+### Current Categories
+
+```rust
+pub enum SkillCategory {
+    Corporate,   // Agency-wide standards (rhinolabs-*)
+    Frontend,    // Frontend frameworks (react-*, typescript-*, tailwind-*, zod-*, zustand-*)
+    Testing,     // Testing tools (playwright, testing-strategies)
+    AiSdk,       // AI SDK skills (ai-sdk-*, nextjs-integration)
+    Utilities,   // Utility skills (skill-creator)
+    Custom,      // User-created skills (default)
+}
+```
+
+### Category Assignment (Current - Hardcoded)
+
+Categories are currently determined by skill ID matching in `core/src/skills.rs`:
+
+```rust
+const CORPORATE_SKILLS: &[&str] = &["rhinolabs-standards", "rhinolabs-architecture", "rhinolabs-security"];
+const FRONTEND_SKILLS: &[&str] = &["react-patterns", "typescript-best-practices", "tailwind-4", "zod-4", "zustand-5"];
+const TESTING_SKILLS: &[&str] = &["testing-strategies", "playwright"];
+const AI_SDK_SKILLS: &[&str] = &["ai-sdk-core", "ai-sdk-react", "nextjs-integration"];
+const UTILITIES_SKILLS: &[&str] = &["skill-creator"];
+```
+
+**Problem**: New skills always fall into `Custom` unless code is modified.
+
+### Planned: Dynamic Category Assignment
+
+Move category mapping to `.skills-config.json`:
+
+```json
+{
+  "categoryMap": {
+    "figma-implement-design": "frontend",
+    "my-custom-skill": "utilities"
+  },
+  "disabled": [...],
+  "custom": [...]
+}
+```
+
+**Changes required**:
+1. Add `category_map: HashMap<String, SkillCategory>` to SkillsConfig
+2. Modify `get_category()` to check category_map first, then fallback to constants
+3. Add `set_category()` function
+4. Modify `create()` to save category to config
+5. Add CLI command: `rhinolabs skill create --category <cat>`
+6. GUI already has category dropdown, just needs to pass it correctly
+
+---
+
 ## Distribution
 
 ### Initial Setup (New Team Developer)
@@ -512,5 +568,75 @@ Note: Team developers do NOT need GITHUB_TOKEN (only for read operations)
 
 ---
 
-**Last Updated**: 2026-01-28
-**Version**: 2.2.0
+---
+
+## External Skill Sources
+
+### Figma MCP Skills (Official)
+
+Figma provides official skills for design-to-code workflows in their MCP server guide:
+
+**Repository**: https://github.com/figma/mcp-server-guide
+
+| Skill | Description |
+|-------|-------------|
+| `implement-design` | Translates Figma designs to pixel-perfect code (React + Tailwind default) |
+| `create-design-system-rules` | Generates project-specific rules for CLAUDE.md |
+| `code-connect-components` | Connects Figma components to code components |
+
+**Key workflow** (from implement-design):
+1. `get_design_context` - Fetch structured design data
+2. `get_screenshot` - Visual reference for validation
+3. Download assets from MCP server
+4. Translate to project conventions
+5. Validate 1:1 visual parity
+
+### Community Skills
+
+| Source | URL | Type |
+|--------|-----|------|
+| Anthropic Official | https://github.com/anthropics/skills | Official |
+| Vercel Agent Skills | https://github.com/vercel-labs/agent-skills | Marketplace |
+| Awesome Claude Skills | https://github.com/travisvn/awesome-claude-skills | Community |
+
+---
+
+## CI/CD Validation
+
+Before pushing to GitHub, run these validations locally:
+
+```bash
+# One-liner
+cargo fmt --all && cargo clippy --workspace -- -D warnings && cargo test --workspace
+
+# Or use Makefile
+make test-quick  # Rust only
+make test        # Rust + E2E
+```
+
+### Common Clippy Fixes
+
+| Error | Fix |
+|-------|-----|
+| `clone_on_copy` | Remove `.clone()` on Copy types |
+| `derivable_impls` | Use `#[derive(Default)]` + `#[default]` attribute |
+| `ptr_arg` | Use `&Path` instead of `&PathBuf` |
+| `redundant_closure` | Replace `\|x\| Foo::from(x)` with `Foo::from` |
+
+### Local CI with Act
+
+```bash
+act -j test --matrix os:ubuntu-latest -P ubuntu-latest=catthehacker/ubuntu:act-latest
+```
+
+**Note**: Workflow must have explicit components:
+```yaml
+- uses: dtolnay/rust-toolchain@stable
+  with:
+    components: clippy, rustfmt
+```
+
+---
+
+**Last Updated**: 2026-01-29
+**Version**: 2.3.0

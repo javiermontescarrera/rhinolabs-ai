@@ -4,9 +4,9 @@ use rhinolabs_core::{
     Doctor, Installer, Instructions, InstructionsManager, Manifest, McpConfig, McpConfigManager,
     McpServer, McpSettings, McpSync, OutputStyle, OutputStyles, Paths, PermissionConfig,
     PluginManifest, PluginSettings, Profile, ProfileInstallResult, Profiles, Project,
-    ProjectConfig, ProjectStatus, RemoteSkill, RemoteSkillFile, Settings, Skill, SkillSchema,
-    SkillSource, SkillSourceType, Skills, StatusLineConfig, SyncResult, UpdateProfileInput,
-    UpdateSkillInput, Updater, Version,
+    ProjectConfig, ProjectStatus, RemoteSkill, RemoteSkillFile, Settings, Skill, SkillCategory,
+    SkillSchema, SkillSource, SkillSourceType, Skills, StatusLineConfig, SyncResult,
+    UpdateProfileInput, UpdateSkillInput, Updater, Version,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -320,6 +320,20 @@ pub fn toggle_skill(id: String, enabled: bool) -> Result<(), String> {
 #[tauri::command]
 pub fn delete_skill(id: String) -> Result<(), String> {
     Skills::delete(&id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_skill_category(skill_id: String, category: String) -> Result<(), String> {
+    let category_enum = match category.to_lowercase().as_str() {
+        "corporate" => SkillCategory::Corporate,
+        "frontend" => SkillCategory::Frontend,
+        "testing" => SkillCategory::Testing,
+        "aisdk" | "ai-sdk" => SkillCategory::AiSdk,
+        "utilities" => SkillCategory::Utilities,
+        _ => SkillCategory::Custom,
+    };
+
+    Skills::set_category(&skill_id, category_enum).map_err(|e| e.to_string())
 }
 
 // ============================================

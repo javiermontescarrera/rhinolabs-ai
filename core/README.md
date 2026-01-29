@@ -188,7 +188,7 @@ graph TB
 ```
 
 ```rust
-use rhinolabs_core::Skills;
+use rhinolabs_core::{Skills, SkillCategory, CreateSkillInput, UpdateSkillInput};
 
 // List all skills
 let skills = Skills::list()?;
@@ -201,7 +201,33 @@ let skills = Skills::list_by_profile("react-stack")?;
 
 // Fetch remote skills
 Skills::fetch_remote("anthropic-official")?;
+
+// Create a new skill with category
+let skill = Skills::create(CreateSkillInput {
+    id: "my-skill".to_string(),
+    name: "My Skill".to_string(),
+    description: "Custom skill".to_string(),
+    category: SkillCategory::Frontend,
+    content: "# Instructions".to_string(),
+})?;
+
+// Update skill (including category)
+Skills::update("my-skill", UpdateSkillInput {
+    category: Some(SkillCategory::Testing),
+    ..Default::default()
+})?;
+
+// Change skill category directly
+Skills::set_category("my-skill", SkillCategory::Utilities)?;
+
+// Get skill category
+let category = Skills::get_skill_category("my-skill")?;
 ```
+
+**Dynamic Categories:**
+- User-defined categories are stored in `.skills-config.json` under `categoryMap`
+- Categories in `categoryMap` take precedence over hardcoded built-in categories
+- Available categories: `Corporate`, `Frontend`, `Testing`, `AiSdk`, `Utilities`, `Custom`
 
 ### deploy.rs
 

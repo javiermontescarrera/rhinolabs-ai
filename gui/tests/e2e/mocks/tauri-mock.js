@@ -506,6 +506,16 @@
         return null;
       }
 
+      case 'set_skill_category': {
+        const { skillId, category } = args;
+        const index = state.skills.findIndex((s) => s.id === skillId);
+        if (index === -1) {
+          throw new Error(`Skill "${skillId}" not found`);
+        }
+        state.skills[index].category = category;
+        return null;
+      }
+
       // ----------------------------------------
       // Instructions
       // ----------------------------------------
@@ -575,14 +585,18 @@
       }
 
       case 'fetch_remote_skills': {
-        const { source_id } = args;
-        // Return mock remote skills
+        const { sourceId } = args;
+        // Return mock remote skills with all required fields
+        const sourceName = sourceId === 'anthropic-official' ? 'Anthropic Official' : 'Community Skills';
         return [
           {
             id: 'remote-skill-1',
             name: 'Remote Skill 1',
-            description: 'A remote skill from ' + source_id,
+            description: 'A remote skill from ' + sourceId,
             category: 'remote',
+            sourceId: sourceId,
+            sourceName: sourceName,
+            url: `https://github.com/example/${sourceId}/remote-skill-1`,
             installed: false,
           },
           {
@@ -590,6 +604,9 @@
             name: 'Remote Skill 2',
             description: 'Another remote skill',
             category: 'remote',
+            sourceId: sourceId,
+            sourceName: sourceName,
+            url: `https://github.com/example/${sourceId}/remote-skill-2`,
             installed: true,
           },
         ];
@@ -611,9 +628,24 @@
       }
 
       case 'install_skill_from_remote': {
-        const { source_id, skill_id } = args;
-        console.log(`[TauriMock] Installing skill ${skill_id} from ${source_id}`);
-        return null;
+        const { input } = args;
+        console.log(`[TauriMock] Installing skill ${input?.skillId} from source ${input?.sourceId}`);
+        // Add the skill to state so set_skill_category can find it
+        const newSkill = {
+          id: input?.skillId,
+          name: input?.skillId,
+          description: `Installed from ${input?.sourceName || input?.sourceId}`,
+          enabled: true,
+          category: 'custom',
+          path: `/skills/${input?.skillId}/SKILL.md`,
+          content: `# ${input?.skillId}\n\nInstalled from remote.`,
+          isCustom: true,
+          isModified: false,
+          sourceId: input?.sourceId,
+          sourceName: input?.sourceName,
+        };
+        state.skills.push(newSkill);
+        return newSkill;
       }
 
       case 'get_skill_files': {

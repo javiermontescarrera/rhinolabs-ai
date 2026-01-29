@@ -7,6 +7,8 @@ description: Validations to run before pushing to GitHub to avoid CI failures
 
 Before pushing code to GitHub, run these validations locally to catch issues before CI.
 
+**CRITICAL: NEVER skip ANY validation step. ALL checks must pass before pushing.**
+
 ## Validation Checklist
 
 ### 1. Clippy (Linting)
@@ -17,16 +19,16 @@ cargo clippy --workspace -- -D warnings
 
 **Common clippy errors to watch for:**
 
-| Error | Fix |
-|-------|-----|
-| `clone_on_copy` | Remove `.clone()` on Copy types (e.g., `FileOptions`) |
-| `derivable_impls` | Use `#[derive(Default)]` + `#[default]` attribute instead of manual impl |
-| `only_used_in_recursion` | Change `&self` methods to associated functions (`Self::method()`) |
-| `ptr_arg` | Use `&Path` instead of `&PathBuf` in function parameters |
-| `redundant_closure` | Replace `\|x\| Foo::from(x)` with `Foo::from` |
-| `unnecessary_filter_map` | Use `.map()` when closure always returns `Some` |
-| `doc_lazy_continuation` | Add blank line (`///`) before continued doc list items |
-| `needless_late_init` | Initialize variables at declaration point |
+| Error                    | Fix                                                                      |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `clone_on_copy`          | Remove `.clone()` on Copy types (e.g., `FileOptions`)                    |
+| `derivable_impls`        | Use `#[derive(Default)]` + `#[default]` attribute instead of manual impl |
+| `only_used_in_recursion` | Change `&self` methods to associated functions (`Self::method()`)        |
+| `ptr_arg`                | Use `&Path` instead of `&PathBuf` in function parameters                 |
+| `redundant_closure`      | Replace `\|x\| Foo::from(x)` with `Foo::from`                            |
+| `unnecessary_filter_map` | Use `.map()` when closure always returns `Some`                          |
+| `doc_lazy_continuation`  | Add blank line (`///`) before continued doc list items                   |
+| `needless_late_init`     | Initialize variables at declaration point                                |
 
 ### 2. Formatting
 
@@ -40,13 +42,31 @@ If it fails, run:
 cargo fmt --all
 ```
 
-### 3. Tests
+### 3. Rust Tests
 
 ```bash
 cargo test --workspace
 ```
 
-### 4. Local CI with Act (Optional)
+### 4. TypeScript Type Check
+
+```bash
+cd gui && npx tsc --noEmit
+```
+
+### 5. E2E Tests (Playwright)
+
+```bash
+cd gui/tests && pnpm test
+```
+
+If tests fail, check:
+
+- Mock file (`mocks/tauri-mock.js`) has all required commands
+- New UI elements have proper test coverage
+- Selectors match actual component structure
+
+### 6. Local CI with Act (Optional)
 
 For full CI simulation:
 
@@ -67,13 +87,22 @@ act -j test --matrix os:ubuntu-latest -P ubuntu-latest=catthehacker/ubuntu:act-l
     components: clippy, rustfmt
 ```
 
-## One-Liner Validation
+## Full Validation Sequence
 
-Run all checks before push:
+**Run ALL checks before push (in order):**
 
 ```bash
+# 1. Rust: format, lint, test
 cargo fmt --all && cargo clippy --workspace -- -D warnings && cargo test --workspace
+
+# 2. TypeScript: type check
+cd gui && npx tsc --noEmit && cd ..
+
+# 3. E2E: Playwright tests
+cd gui/tests && pnpm test && cd ../..
 ```
+
+**CRITICAL: ALL tests must pass. Do NOT skip ANY TEST.**
 
 ## Fixing Common Issues
 
