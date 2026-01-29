@@ -1,6 +1,6 @@
 {
   "productName": "Rhinolabs AI",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "identifier": "com.rhinolabs.ai",
   "build": {
     "beforeDevCommand": "pnpm dev",

@@ -1,0 +1,250 @@
+pub mod commands;
+pub mod ui;
+
+use clap::{Parser, Subcommand};
+use commands::*;
+
+#[derive(Parser)]
+#[command(name = "rhinolabs-ai")]
+#[command(about = "Rhinolabs AI Plugin Manager for Claude Code", long_about = None)]
+#[command(version)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Install the Rhinolabs Claude plugin
+    Install {
+        /// Install from local directory (for development)
+        #[arg(short, long)]
+        local: Option<String>,
+
+        /// Dry run - show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Update plugin to latest version
+    Update {
+        /// Dry run - show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Uninstall the plugin
+    Uninstall {
+        /// Dry run - show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Sync MCP configuration
+    SyncMcp {
+        /// Remote URL to fetch configuration from
+        #[arg(short, long)]
+        url: Option<String>,
+
+        /// Local file path to import configuration from
+        #[arg(short, long)]
+        file: Option<String>,
+
+        /// Dry run - show what would be done without making changes
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// Show plugin status and version info
+    Status,
+
+    /// Run diagnostic checks
+    Doctor,
+
+    /// Show version information
+    Version,
+
+    /// Manage skill profiles
+    Profile {
+        #[command(subcommand)]
+        action: ProfileAction,
+    },
+
+    /// Manage skills
+    Skill {
+        #[command(subcommand)]
+        action: SkillAction,
+    },
+
+    /// Sync configuration from GitHub (pull latest deployed config)
+    Sync,
+}
+
+#[derive(Subcommand)]
+enum ProfileAction {
+    /// List all profiles
+    List,
+
+    /// Show details of a specific profile
+    Show {
+        /// Profile ID to show
+        profile_id: String,
+    },
+
+    /// Install a profile to a project
+    Install {
+        /// Profile ID to install
+        profile: String,
+
+        /// Target project path (defaults to current directory)
+        #[arg(short = 'P', long)]
+        path: Option<String>,
+    },
+
+    /// Update an installed profile with latest skill versions
+    Update {
+        /// Profile ID (optional - detects from installed plugin if not specified)
+        profile: Option<String>,
+
+        /// Target project path (defaults to current directory)
+        #[arg(short = 'P', long)]
+        path: Option<String>,
+    },
+
+    /// Uninstall profile from a project (removes .claude directory)
+    Uninstall {
+        /// Target project path (defaults to current directory)
+        #[arg(short = 'P', long)]
+        path: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum SkillAction {
+    /// List all skills
+    List,
+
+    /// Show details of a specific skill
+    Show {
+        /// Skill ID to show
+        skill_id: String,
+    },
+
+    /// Create a new custom skill
+    Create {
+        /// Unique skill identifier (e.g., "my-skill")
+        #[arg(long)]
+        id: String,
+
+        /// Display name for the skill
+        #[arg(long)]
+        name: String,
+
+        /// Skill category: corporate, frontend, testing, ai-sdk, utilities, custom
+        #[arg(long, default_value = "custom")]
+        category: String,
+
+        /// Optional description
+        #[arg(long)]
+        description: Option<String>,
+    },
+
+    /// Set the category for an existing skill
+    SetCategory {
+        /// Skill ID to update
+        skill_id: String,
+
+        /// New category: corporate, frontend, testing, ai-sdk, utilities, custom
+        category: String,
+    },
+}
+
+pub async fn run() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+
+    // Determine if auto-sync should run for this command
+    let should_auto_sync = matches!(
+        &cli.command,
+        Some(Commands::Profile { .. })
+            | Some(Commands::Status)
+            | Some(Commands::Doctor)
+            | Some(Commands::SyncMcp { .. })
+            | None // Interactive mode
+    );
+
+    // Run auto-sync for applicable commands
+    if should_auto_sync {
+        // Auto-sync runs silently if not needed, shows UI if syncing
+        let _ = auto_sync::run_auto_sync().await;
+    }
+
+    match cli.command {
+        Some(Commands::Install { local, dry_run }) => {
+            install::run(local, dry_run).await?;
+        }
+        Some(Commands::Update { dry_run }) => {
+            update::run(dry_run).await?;
+        }
+        Some(Commands::Uninstall { dry_run }) => {
+            uninstall::run(dry_run)?;
+        }
+        Some(Commands::SyncMcp { url, file, dry_run }) => {
+            sync_mcp::run(url, file, dry_run).await?;
+        }
+        Some(Commands::Status) => {
+            status::run()?;
+        }
+        Some(Commands::Doctor) => {
+            doctor::run().await?;
+        }
+        Some(Commands::Version) => {
+            version::run();
+        }
+        Some(Commands::Profile { action }) => match action {
+            ProfileAction::List => {
+                profile::list()?;
+            }
+            ProfileAction::Show { profile_id } => {
+                profile::show(&profile_id)?;
+            }
+            ProfileAction::Install { profile, path } => {
+                profile::install(&profile, path)?;
+            }
+            ProfileAction::Update { profile, path } => {
+                profile::update(profile, path)?;
+            }
+            ProfileAction::Uninstall { path } => {
+                profile::uninstall(path)?;
+            }
+        },
+        Some(Commands::Skill { action }) => match action {
+            SkillAction::List => {
+                skill::list()?;
+            }
+            SkillAction::Show { skill_id } => {
+                skill::show(&skill_id)?;
+            }
+            SkillAction::Create {
+                id,
+                name,
+                category,
+                description,
+            } => {
+                skill::create(id, name, category, description)?;
+            }
+            SkillAction::SetCategory { skill_id, category } => {
+                skill::set_category(skill_id, category)?;
+            }
+        },
+        Some(Commands::Sync) => {
+            // Manual sync - always runs regardless of session marker
+            deploy::sync().await?;
+        }
+        None => {
+            // Interactive mode
+            interactive::run().await?;
+        }
+    }
+
+    Ok(())
+}

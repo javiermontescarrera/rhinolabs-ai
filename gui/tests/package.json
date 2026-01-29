@@ -1,6 +1,6 @@
 {
   "name": "@rhinolabs-ai/tests",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "E2E tests for Rhinolabs AI GUI",
   "type": "module",
   "private": true,

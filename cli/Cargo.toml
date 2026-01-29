@@ -5,15 +5,16 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 
-# Main binary: rhinolabs-ai
+# Main binary
 [[bin]]
 name = "rhinolabs-ai"
 path = "src/main.rs"
 
-# Alias: rlai (short form)
-[[bin]]
-name = "rlai"
-path = "src/main.rs"
+# Short alias binary (uses src/bin/rlai.rs automatically)
+
+[lib]
+name = "rhinolabs_ai_cli"
+path = "src/lib.rs"
 
 [dependencies]
 rhinolabs-core = { path = "../core" }
