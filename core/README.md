@@ -19,6 +19,7 @@ graph TB
         PATHS[Paths]
         SETTINGS[Settings]
         MCP[MCP]
+        RAG[RAG]
     end
 
     subgraph "Storage"
@@ -29,6 +30,7 @@ graph TB
     CLI --> PROFILES
     CLI --> SKILLS
     CLI --> DEPLOY
+    CLI --> RAG
     GUI --> PROFILES
     GUI --> SKILLS
     GUI --> DEPLOY
@@ -38,9 +40,11 @@ graph TB
     SKILLS --> FS
     DEPLOY --> GH
     INSTALLER --> FS
+    RAG --> FS
 
     style CLI fill:#3182ce,stroke:#63b3ed,color:#fff
     style GUI fill:#805ad5,stroke:#9f7aea,color:#fff
+    style RAG fill:#38a169,stroke:#68d391,color:#fff
 ```
 
 `rhinolabs-core` is used by both the CLI and GUI to ensure consistent behavior across all interfaces.
@@ -65,6 +69,7 @@ graph TB
         DEPLOY[deploy.rs<br/>Export/Deploy/Sync]
         INSTALLER[installer.rs<br/>Plugin Install]
         MCP[mcp.rs<br/>MCP Config]
+        RAG[rag.rs<br/>RAG Config]
     end
 
     subgraph "Utilities"
@@ -76,13 +81,16 @@ graph TB
     LIB --> SKILLS
     LIB --> DEPLOY
     LIB --> INSTALLER
+    LIB --> RAG
     PROFILES --> PATHS
     SKILLS --> PATHS
     DEPLOY --> PROJECT
     DEPLOY --> PATHS
+    RAG --> PATHS
 
     style LIB fill:#805ad5,stroke:#9f7aea,color:#fff
     style DEPLOY fill:#e53e3e,stroke:#fc8181,color:#fff
+    style RAG fill:#38a169,stroke:#68d391,color:#fff
 ```
 
 ## Modules
@@ -452,6 +460,112 @@ Mcp::remove("my-server")?;
 // Sync from source
 Mcp::sync_from_url("https://config.example.com/mcp.json").await?;
 ```
+
+### rag.rs
+
+RAG (Retrieval-Augmented Generation) local configuration management. All actual RAG operations are performed by the centralized MCP Worker.
+
+```mermaid
+flowchart TB
+    subgraph "Local Configuration"
+        RAG_JSON[.claude/rag.json]
+        SETTINGS[~/.config/rhinolabs-ai/rag-settings.json]
+    end
+
+    subgraph "Rag Module Operations"
+        INIT[init]
+        LOAD[load_config]
+        REMOVE[remove]
+        IS_CONFIGURED[is_configured]
+        GET_MCP_URL[get_mcp_url]
+    end
+
+    subgraph "Admin Settings"
+        SET_ADMIN[set_admin_key]
+        GET_ADMIN[get_admin_key]
+        LOAD_SETTINGS[load_settings]
+        SAVE_SETTINGS[save_settings]
+    end
+
+    INIT --> RAG_JSON
+    LOAD --> RAG_JSON
+    REMOVE --> RAG_JSON
+    IS_CONFIGURED --> RAG_JSON
+
+    SET_ADMIN --> SETTINGS
+    GET_ADMIN --> SETTINGS
+    LOAD_SETTINGS --> SETTINGS
+    SAVE_SETTINGS --> SETTINGS
+
+    style RAG_JSON fill:#38a169,stroke:#68d391,color:#fff
+    style SETTINGS fill:#805ad5,stroke:#9f7aea,color:#fff
+```
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI/App
+    participant Rag as Rag Module
+    participant FS as File System
+    participant MCP as MCP Worker
+
+    Note over CLI,MCP: Project Initialization
+    CLI->>Rag: init(project_id, api_key)
+    Rag->>FS: Create .claude/rag.json
+    FS-->>Rag: OK
+    Rag-->>CLI: RagConfig
+
+    Note over CLI,MCP: Runtime (Claude Code)
+    CLI->>Rag: load_config()
+    Rag->>FS: Read .claude/rag.json
+    FS-->>Rag: RagConfig
+    Rag-->>CLI: {project_id, api_key, mcp_url}
+    CLI->>MCP: Use MCP tools with config
+```
+
+```rust
+use rhinolabs_core::{Rag, RagConfig, RagSettings};
+
+// Initialize RAG for a project (creates .claude/rag.json)
+let config = Rag::init(Path::new("./my-project"), "project-id", "rl_api_key")?;
+
+// Load existing configuration
+let config = Rag::load_config(Path::new("./my-project"))?;
+
+// Check if RAG is configured
+if Rag::is_configured(Path::new("./my-project"))? {
+    // ...
+}
+
+// Get MCP URL (returns custom or default)
+let url = Rag::get_mcp_url(&config);
+
+// Remove RAG configuration
+Rag::remove(Path::new("./my-project"))?;
+
+// Admin key management (for creating/listing API keys)
+Rag::set_admin_key("admin_secret")?;
+let admin_key = Rag::get_admin_key()?;
+
+// Settings persistence
+let settings = Rag::load_settings()?;
+Rag::save_settings(&RagSettings {
+    default_mcp_url: Some("https://custom.workers.dev".to_string()),
+    admin_key: Some("my_admin_key".to_string()),
+})?;
+```
+
+**Key Concepts:**
+
+- **RagConfig**: Per-project configuration stored in `.claude/rag.json`
+  - `project_id`: Unique identifier for the project
+  - `api_key`: API key for authenticating with MCP Worker
+  - `mcp_url`: Optional custom MCP Worker URL (uses default if not set)
+
+- **RagSettings**: Global settings stored in `~/.config/rhinolabs-ai/rag-settings.json`
+  - `default_mcp_url`: Override default MCP Worker URL
+  - `admin_key`: Admin key for key management operations
+
+**Note:** The Rag module only manages local configuration. All actual save/search operations are performed by the MCP Worker and accessed via Claude Code's MCP integration.
 
 ## Data Types
 

@@ -26,3 +26,15 @@ chrono = { version = "0.4", features = ["serde"] }
 sha2 = "0.10"
 tempfile = "3.9"
 serde_yaml = "0.9"
+
+# RAG/R2 dependencies
+aws-sigv4 = "1"
+aws-credential-types = { version = "1", features = ["hardcoded-credentials"] }
+http = "1"
+base64 = "0.22"
+hmac = "0.12"
+walkdir = "2"
+quick-xml = { version = "0.31", features = ["serialize"] }
+
+[dev-dependencies]
+wiremock = "0.6"

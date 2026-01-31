@@ -11,6 +11,7 @@ pub mod output_styles;
 pub mod paths;
 pub mod profiles;
 pub mod project;
+pub mod rag;
 pub mod settings;
 pub mod skills;
 pub mod updater;
@@ -34,6 +35,7 @@ pub use profiles::{
     SkillInstallError, UpdateAutoInvokeInput, UpdateProfileInput,
 };
 pub use project::{GitHubConfig, Project, ProjectConfig, ProjectStatus, ReleaseAsset};
+pub use rag::{Rag, RagConfig, RagSettings};
 pub use settings::{
     AttributionConfig, PermissionConfig, PluginSettings, Settings, StatusLineConfig,
 };

@@ -41,6 +41,16 @@
       "enabled": true,
       "fetchable": true,
       "schema": "standard"
+    },
+    {
+      "id": "cloudflare-skills",
+      "name": "Cloudflare Skills",
+      "sourceType": "community",
+      "url": "https://github.com/cloudflare/skills",
+      "description": "A collection of Agent Skills for building on Cloudflare, Workers, the Agents SDK, and the wider Cloudflare Developer Platform.",
+      "enabled": true,
+      "fetchable": true,
+      "schema": "standard"
     }
   ],
   "skillMeta": {

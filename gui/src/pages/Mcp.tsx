@@ -119,10 +119,23 @@ export default function Mcp() {
     setEditing(name);
     setFormData({
       name,
-      command: server.command,
-      args: server.args.join('\n'),
+      command: server.command ?? '',
+      args: (server.args ?? []).join('\n'),
       env: server.env ? JSON.stringify(server.env, null, 2) : '',
     });
+  }
+
+  // Check if server uses HTTP transport
+  function isHttpServer(server: McpServer): boolean {
+    return server.transport === 'http' || !!server.url;
+  }
+
+  // Get display string for server
+  function getServerDisplay(server: McpServer): string {
+    if (isHttpServer(server)) {
+      return server.url ?? '';
+    }
+    return `${server.command ?? ''} ${(server.args ?? []).join(' ')}`;
   }
 
   function resetForm() {
@@ -268,15 +281,24 @@ export default function Mcp() {
           Object.entries(servers).map(([name, server]) => (
             <div key={name} className="list-item">
               <div className="item-info">
-                <h4>{name}</h4>
+                <h4>
+                  {name}
+                  {isHttpServer(server) && (
+                    <span className="badge badge-secondary" style={{ marginLeft: '0.5rem', fontSize: '0.7rem' }}>
+                      HTTP
+                    </span>
+                  )}
+                </h4>
                 <p>
-                  <code>{server.command} {server.args.join(' ')}</code>
+                  <code>{getServerDisplay(server)}</code>
                 </p>
               </div>
               <div className="item-actions">
-                <button className="btn btn-sm btn-secondary" onClick={() => startEdit(name, server)}>
-                  Edit
-                </button>
+                {!isHttpServer(server) && (
+                  <button className="btn btn-sm btn-secondary" onClick={() => startEdit(name, server)}>
+                    Edit
+                  </button>
+                )}
                 <button className="btn btn-sm btn-danger" onClick={() => handleDelete(name)}>
                   Delete
                 </button>

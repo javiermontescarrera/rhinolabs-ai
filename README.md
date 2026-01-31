@@ -224,7 +224,102 @@ rhinolabs-ai doctor                  # Run diagnostics
 
 # MCP configuration
 rhinolabs-ai sync-mcp                # Sync MCP servers from source
+
+# RAG (Project Memory)
+rhinolabs-ai rag init --project <id> --api-key <key>  # Initialize RAG
+rhinolabs-ai rag status              # Show RAG status
+rhinolabs-ai rag create-key --name "Team"  # Create API key (admin)
+rhinolabs-ai rag list-keys           # List API keys (admin)
+rhinolabs-ai rag remove              # Remove RAG from project
 ```
+
+## RAG (Project Memory)
+
+RAG provides per-project memory capabilities, allowing Claude Code to save and retrieve architectural decisions, context, and knowledge.
+
+```mermaid
+flowchart TB
+    subgraph "Cloudflare Account"
+        MCP["MCP Worker<br/>rhinolabs-rag-mcp"]
+        R2["R2 Bucket<br/>rhinolabs-rag"]
+        KV["KV Store<br/>API Keys"]
+        AI["AutoRAG<br/>Vector Search"]
+
+        MCP --> R2
+        MCP --> KV
+        MCP --> AI
+        R2 --> AI
+    end
+
+    subgraph "Developer Machine"
+        CC["Claude Code"]
+        CLI["rhinolabs-ai CLI"]
+        CONFIG[".claude/rag.json"]
+    end
+
+    CC <-->|"MCP Protocol"| MCP
+    CLI -->|"Init/Status"| CONFIG
+    CONFIG -.->|"projectId + apiKey"| CC
+
+    style MCP fill:#f6993f,stroke:#de751f,color:#fff
+    style CC fill:#805ad5,stroke:#9f7aea,color:#fff
+    style AI fill:#38a169,stroke:#68d391,color:#fff
+```
+
+### RAG Architecture Flow
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant CC as Claude Code
+    participant MCP as MCP Worker
+    participant R2 as R2 Storage
+    participant AI as AutoRAG
+
+    Note over Dev,AI: Saving a Decision
+    Dev->>CC: "Save: We'll use JWT for auth"
+    CC->>MCP: rag_save(project_id, content)
+    MCP->>R2: Store document
+    R2->>AI: Auto-index
+    MCP-->>CC: {success: true}
+    CC-->>Dev: "Decision saved"
+
+    Note over Dev,AI: Searching Decisions
+    Dev->>CC: "What did we decide about auth?"
+    CC->>MCP: rag_ai_search(project_id, query)
+    MCP->>AI: Vector search + AI response
+    AI-->>MCP: Results + generated answer
+    MCP-->>CC: {response, sources}
+    CC-->>Dev: "You decided to use JWT..."
+```
+
+### RAG Setup
+
+```bash
+# 1. Admin creates API key (one time)
+rhinolabs-ai rag set-admin-key <admin-secret>
+rhinolabs-ai rag create-key --name "Backend Team"
+# → API Key: rl_abc123...
+
+# 2. Initialize RAG in project
+cd my-project
+rhinolabs-ai rag init --project my-project --api-key rl_abc123...
+
+# 3. Claude Code automatically uses RAG tools
+# - Ask Claude to save decisions
+# - Ask Claude about previous decisions
+```
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `rag_save` | Save document to project RAG |
+| `rag_search` | Vector similarity search |
+| `rag_ai_search` | AI-powered search with generated answer |
+| `rag_list_documents` | List all documents |
+| `rag_delete_document` | Delete a document |
+| `rag_project_info` | Get project statistics |
 
 ## Monorepo Example
 

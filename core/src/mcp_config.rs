@@ -4,12 +4,70 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
+/// MCP Server configuration supporting both stdio and HTTP transports.
+///
+/// For stdio transport (local process):
+/// - `command`: The command to run
+/// - `args`: Arguments for the command
+/// - `env`: Optional environment variables
+///
+/// For HTTP transport (remote server):
+/// - `url`: The HTTP URL of the MCP server
+/// - `transport`: Must be "http"
+/// - `headers`: Optional HTTP headers (e.g., Authorization)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpServer {
-    pub command: String,
+    // stdio transport fields
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub env: Option<HashMap<String, String>>,
+
+    // http transport fields
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transport: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<HashMap<String, String>>,
+}
+
+impl McpServer {
+    /// Create a new stdio-based MCP server
+    pub fn stdio(command: String, args: Vec<String>) -> Self {
+        Self {
+            command: Some(command),
+            args,
+            env: None,
+            url: None,
+            transport: None,
+            headers: None,
+        }
+    }
+
+    /// Create a new HTTP-based MCP server
+    pub fn http(url: String) -> Self {
+        Self {
+            command: None,
+            args: Vec::new(),
+            env: None,
+            url: Some(url),
+            transport: Some("http".to_string()),
+            headers: None,
+        }
+    }
+
+    /// Check if this is an HTTP transport server
+    pub fn is_http(&self) -> bool {
+        self.transport.as_deref() == Some("http") || self.url.is_some()
+    }
+
+    /// Check if this is a stdio transport server
+    pub fn is_stdio(&self) -> bool {
+        self.command.is_some()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -192,18 +250,32 @@ mod tests {
     }
 
     #[test]
-    fn test_mcp_server_serialization() {
-        let server = McpServer {
-            command: "npx".into(),
-            args: vec!["-y".into(), "@modelcontextprotocol/server-git".into()],
-            env: None,
-        };
+    fn test_mcp_server_stdio_serialization() {
+        let server = McpServer::stdio(
+            "npx".into(),
+            vec!["-y".into(), "@modelcontextprotocol/server-git".into()],
+        );
 
         let json = serde_json::to_string(&server).unwrap();
         let deserialized: McpServer = serde_json::from_str(&json).unwrap();
 
-        assert_eq!(deserialized.command, "npx");
+        assert_eq!(deserialized.command, Some("npx".into()));
         assert_eq!(deserialized.args.len(), 2);
+        assert!(deserialized.is_stdio());
+        assert!(!deserialized.is_http());
+    }
+
+    #[test]
+    fn test_mcp_server_http_serialization() {
+        let server = McpServer::http("https://example.com/mcp".into());
+
+        let json = serde_json::to_string(&server).unwrap();
+        let deserialized: McpServer = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.url, Some("https://example.com/mcp".into()));
+        assert_eq!(deserialized.transport, Some("http".into()));
+        assert!(deserialized.is_http());
+        assert!(!deserialized.is_stdio());
     }
 
     #[test]
@@ -211,15 +283,25 @@ mod tests {
         let mut env = HashMap::new();
         env.insert("TOKEN".into(), "secret".into());
 
-        let server = McpServer {
-            command: "node".into(),
-            args: vec!["server.js".into()],
-            env: Some(env),
-        };
+        let mut server = McpServer::stdio("node".into(), vec!["server.js".into()]);
+        server.env = Some(env);
 
         let json = serde_json::to_string(&server).unwrap();
         assert!(json.contains("TOKEN"));
         assert!(json.contains("secret"));
+    }
+
+    #[test]
+    fn test_mcp_server_http_with_headers() {
+        let mut headers = HashMap::new();
+        headers.insert("Authorization".into(), "Bearer token".into());
+
+        let mut server = McpServer::http("https://example.com/mcp".into());
+        server.headers = Some(headers);
+
+        let json = serde_json::to_string(&server).unwrap();
+        assert!(json.contains("Authorization"));
+        assert!(json.contains("Bearer token"));
     }
 
     #[test]

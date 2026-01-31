@@ -78,6 +78,12 @@ enum Commands {
 
     /// Sync configuration from GitHub (pull latest deployed config)
     Sync,
+
+    /// Manage RAG (Retrieval-Augmented Generation) for project memory
+    Rag {
+        #[command(subcommand)]
+        action: RagAction,
+    },
 }
 
 #[derive(Subcommand)]
@@ -157,6 +163,46 @@ enum SkillAction {
         /// New category: corporate, frontend, testing, ai-sdk, utilities, custom
         category: String,
     },
+}
+
+#[derive(Subcommand)]
+enum RagAction {
+    /// Initialize RAG for the current project
+    Init {
+        /// Project identifier (e.g., "prowler-api")
+        #[arg(long)]
+        project: String,
+
+        /// API key for the MCP Worker
+        #[arg(long)]
+        api_key: String,
+    },
+
+    /// Show RAG status for the current project
+    Status,
+
+    /// Create a new API key (requires admin key)
+    CreateKey {
+        /// Name for the API key (e.g., "Backend Team")
+        #[arg(long)]
+        name: String,
+
+        /// Limit key to specific projects (default: all projects)
+        #[arg(long)]
+        projects: Option<Vec<String>>,
+    },
+
+    /// List all API keys (requires admin key)
+    ListKeys,
+
+    /// Set admin key for key management
+    SetAdminKey {
+        /// Admin key for the MCP Worker
+        key: String,
+    },
+
+    /// Remove RAG configuration from the current project
+    Remove,
 }
 
 pub async fn run() -> anyhow::Result<()> {
@@ -240,6 +286,26 @@ pub async fn run() -> anyhow::Result<()> {
             // Manual sync - always runs regardless of session marker
             deploy::sync().await?;
         }
+        Some(Commands::Rag { action }) => match action {
+            RagAction::Init { project, api_key } => {
+                rag::init(project, api_key)?;
+            }
+            RagAction::Status => {
+                rag::status()?;
+            }
+            RagAction::CreateKey { name, projects } => {
+                rag::create_key(name, projects).await?;
+            }
+            RagAction::ListKeys => {
+                rag::list_keys().await?;
+            }
+            RagAction::SetAdminKey { key } => {
+                rag::set_admin_key(key)?;
+            }
+            RagAction::Remove => {
+                rag::remove()?;
+            }
+        },
         None => {
             // Interactive mode
             interactive::run().await?;

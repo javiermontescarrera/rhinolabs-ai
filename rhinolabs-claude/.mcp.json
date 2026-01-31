@@ -6,6 +6,10 @@
         "-y",
         "@modelcontextprotocol/server-git"
       ]
+    },
+    "rhinolabs-rag": {
+      "url": "https://rhinolabs-rag-mcp.rhinolabs.workers.dev/mcp",
+      "transport": "http"
     }
   },
   "settings": {

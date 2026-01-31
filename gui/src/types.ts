@@ -45,10 +45,18 @@ export interface McpConfig {
   settings: McpSettings;
 }
 
+// MCP Server supports two transport types:
+// - stdio: command + args (local process)
+// - http: url + transport + headers (remote server)
 export interface McpServer {
-  command: string;
-  args: string[];
+  // stdio transport fields
+  command?: string;
+  args?: string[];
   env?: Record<string, string>;
+  // http transport fields
+  url?: string;
+  transport?: 'http';
+  headers?: Record<string, string>;
 }
 
 export interface McpSettings {

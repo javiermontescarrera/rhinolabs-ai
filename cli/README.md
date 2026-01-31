@@ -61,6 +61,7 @@ graph TB
     CLI --> SYNC[sync]
     CLI --> PROFILE[profile]
     CLI --> SKILL[skill]
+    CLI --> RAG[rag]
     CLI --> INSTALL[install]
     CLI --> UPDATE[update]
     CLI --> UNINSTALL[uninstall]
@@ -79,10 +80,18 @@ graph TB
     SKILL --> S_CREATE[create]
     SKILL --> S_SETCAT[set-category]
 
+    RAG --> R_INIT[init]
+    RAG --> R_STATUS[status]
+    RAG --> R_REMOVE[remove]
+    RAG --> R_CREATE_KEY[create-key]
+    RAG --> R_LIST_KEYS[list-keys]
+    RAG --> R_SET_ADMIN[set-admin-key]
+
     style CLI fill:#805ad5,stroke:#9f7aea,color:#fff
     style SYNC fill:#38a169,stroke:#68d391,color:#fff
     style PROFILE fill:#3182ce,stroke:#63b3ed,color:#fff
     style SKILL fill:#dd6b20,stroke:#ed8936,color:#fff
+    style RAG fill:#38a169,stroke:#68d391,color:#fff
 ```
 
 ## Auto-Sync Feature
@@ -230,6 +239,79 @@ rhinolabs-ai sync-mcp --file ./mcp-config.json
 
 # Dry run (show what would be done)
 rhinolabs-ai sync-mcp --dry-run
+```
+
+### RAG (Project Memory)
+
+RAG provides per-project memory capabilities. Claude Code can save and retrieve architectural decisions, context, and knowledge through a centralized MCP Worker.
+
+```mermaid
+flowchart TB
+    subgraph "RAG Commands"
+        INIT[rag init] --> STATUS[rag status]
+        STATUS --> REMOVE[rag remove]
+        CREATE_KEY[rag create-key] --> LIST_KEYS[rag list-keys]
+        SET_ADMIN[rag set-admin-key]
+    end
+
+    subgraph "Local Files"
+        RAG_JSON[.claude/rag.json]
+        SETTINGS[~/.config/rhinolabs-ai/<br/>rag-settings.json]
+    end
+
+    INIT --> RAG_JSON
+    STATUS --> RAG_JSON
+    REMOVE --> RAG_JSON
+    SET_ADMIN --> SETTINGS
+
+    style INIT fill:#38a169,stroke:#68d391,color:#fff
+    style CREATE_KEY fill:#805ad5,stroke:#9f7aea,color:#fff
+```
+
+```bash
+# Initialize RAG for current project
+rhinolabs-ai rag init --project my-project --api-key rl_xxx
+
+# Show RAG status
+rhinolabs-ai rag status
+
+# Remove RAG from project
+rhinolabs-ai rag remove
+
+# Admin: Set admin key for key management
+rhinolabs-ai rag set-admin-key <admin-secret>
+
+# Admin: Create new API key
+rhinolabs-ai rag create-key --name "My Team"
+rhinolabs-ai rag create-key --name "Client X" --projects project-a,project-b
+
+# Admin: List all API keys
+rhinolabs-ai rag list-keys
+```
+
+**RAG Setup Flow:**
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant CLI
+    participant MCP as MCP Worker
+    participant Dev as Developer
+
+    Note over Admin,MCP: One-time: Create API Key
+    Admin->>CLI: rag set-admin-key <secret>
+    Admin->>CLI: rag create-key --name "Team"
+    CLI->>MCP: POST /admin/keys
+    MCP-->>CLI: API Key: rl_abc123...
+    Admin->>Dev: Share API key
+
+    Note over Dev,MCP: Per-project: Initialize RAG
+    Dev->>CLI: rag init --project X --api-key rl_abc123
+    CLI->>CLI: Create .claude/rag.json
+
+    Note over Dev,MCP: Runtime: Claude Code uses MCP
+    Dev->>CLI: claude (start session)
+    CLI->>MCP: MCP tools (rag_save, rag_search, etc.)
 ```
 
 ## Profile Installation Flow
@@ -452,10 +534,15 @@ graph TB
         AUTO_SYNC[auto_sync.rs]
         INSTALL_CMD[install.rs]
         STATUS_CMD[status.rs]
+        RAG_CMD[rag.rs]
     end
 
     subgraph "Core Library"
         CORE[rhinolabs-core]
+    end
+
+    subgraph "External"
+        MCP[MCP Worker]
     end
 
     MAIN --> COMMANDS
@@ -466,13 +553,18 @@ graph TB
     COMMANDS --> AUTO_SYNC
     COMMANDS --> INSTALL_CMD
     COMMANDS --> STATUS_CMD
+    COMMANDS --> RAG_CMD
     PROFILE_CMD --> CORE
     SKILL_CMD --> CORE
     DEPLOY_CMD --> CORE
     AUTO_SYNC --> CORE
+    RAG_CMD --> CORE
+    RAG_CMD -.->|Admin API| MCP
 
     style MAIN fill:#805ad5,stroke:#9f7aea,color:#fff
     style CORE fill:#4a5568,stroke:#718096,color:#fff
+    style RAG_CMD fill:#38a169,stroke:#68d391,color:#fff
+    style MCP fill:#f6993f,stroke:#de751f,color:#fff
 ```
 
 ## Development
